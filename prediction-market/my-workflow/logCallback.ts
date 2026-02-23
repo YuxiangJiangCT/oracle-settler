@@ -2,8 +2,11 @@
 
 import {
   cre,
+  ok,
+  consensusIdenticalAggregation,
   type Runtime,
   type EVMLog,
+  type HTTPSendRequester,
   getNetwork,
   bytesToHex,
   hexToBase64,
@@ -33,19 +36,26 @@ type Config = {
 
 interface Market {
   creator: string;
-  createdAt: bigint;
-  settledAt: bigint;
+  createdAt: number;       // uint48 → number in viem
+  settledAt: number;       // uint48 → number in viem
   settled: boolean;
   confidence: number;
   outcome: number; // 0 = Yes, 1 = No
   totalYesPool: bigint;
   totalNoPool: bigint;
   question: string;
+  asset: string;           // CoinGecko ID (e.g., "bitcoin")
+  targetPrice: bigint;     // Target price in 6 decimals
+  settledPrice: bigint;    // Actual price at settlement
 }
 
 interface GeminiResult {
   result: "YES" | "NO" | "INCONCLUSIVE";
   confidence: number; // 0-10000
+}
+
+interface CoinGeckoPrice {
+  [id: string]: { usd: number };
 }
 
 // ===========================
@@ -57,7 +67,7 @@ const EVENT_ABI = parseAbi([
   "event SettlementRequested(uint256 indexed marketId, string question)",
 ]);
 
-/** ABI for reading market data */
+/** ABI for reading market data (includes asset, targetPrice, settledPrice) */
 const GET_MARKET_ABI = [
   {
     name: "getMarket",
@@ -78,14 +88,17 @@ const GET_MARKET_ABI = [
           { name: "totalYesPool", type: "uint256" },
           { name: "totalNoPool", type: "uint256" },
           { name: "question", type: "string" },
+          { name: "asset", type: "string" },
+          { name: "targetPrice", type: "uint256" },
+          { name: "settledPrice", type: "uint256" },
         ],
       },
     ],
   },
 ] as const;
 
-/** ABI parameters for settlement report (outcome is uint8 for Prediction enum) */
-const SETTLEMENT_PARAMS = parseAbiParameters("uint256 marketId, uint8 outcome, uint16 confidence");
+/** ABI parameters for settlement report (includes settledPrice for verifiability) */
+const SETTLEMENT_PARAMS = parseAbiParameters("uint256 marketId, uint8 outcome, uint16 confidence, uint256 settledPrice");
 
 // ===========================
 // Log Trigger Handler
@@ -154,7 +167,7 @@ export function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
       .callContract(runtime, {
         call: encodeCallMsg({
           from: zeroAddress,
-          to: evmConfig.marketAddress,
+          to: evmConfig.marketAddress as `0x${string}`,
           data: callData,
         })
       })
@@ -164,7 +177,7 @@ export function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
       abi: GET_MARKET_ABI,
       functionName: "getMarket",
       data: bytesToHex(readResult.data),
-    }) as Market;
+    }) as unknown as Market;
 
     runtime.log(`[Step 2] Market creator: ${market.creator}`);
     runtime.log(`[Step 2] Already settled: ${market.settled}`);
@@ -176,44 +189,87 @@ export function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
       return "Market already settled";
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // Step 3: Query AI (HTTP)
-    // ─────────────────────────────────────────────────────────────
-    runtime.log("[Step 3] Querying Gemini AI...");
+    const targetPriceUsd = Number(market.targetPrice) / 1e6;
+    runtime.log(`[Step 2] Asset: ${market.asset}`);
+    runtime.log(`[Step 2] Target Price: $${targetPriceUsd.toLocaleString()}`);
 
-    const geminiResult = askGemini(runtime, question);
-    
-    // Extract JSON from response (AI may include prose before/after the JSON)
-    const jsonMatch = geminiResult.geminiResponse.match(/\{[\s\S]*"result"[\s\S]*"confidence"[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error(`Could not find JSON in AI response: ${geminiResult.geminiResponse}`);
+    // ─────────────────────────────────────────────────────────────
+    // Step 3: Fetch real price from CoinGecko (Confidential HTTP)
+    // ─────────────────────────────────────────────────────────────
+    runtime.log(`[Step 3] Fetching ${market.asset} price from CoinGecko...`);
+
+    const httpClient = new cre.capabilities.HTTPClient();
+    const assetId = market.asset;
+
+    const priceResult = httpClient
+      .sendRequest(
+        runtime,
+        buildCoinGeckoRequest(assetId),
+        consensusIdenticalAggregation<{ price: number }>()
+      )(runtime.config)
+      .result();
+
+    const currentPriceUsd = priceResult.price;
+
+    if (!currentPriceUsd) {
+      throw new Error(`CoinGecko returned no price for ${market.asset}`);
     }
-    const parsed = JSON.parse(jsonMatch[0]) as GeminiResult;
 
-    // Validate the result - only YES or NO can settle a market
-    if (!["YES", "NO"].includes(parsed.result)) {
-      throw new Error(`Cannot settle: AI returned ${parsed.result}. Only YES or NO can settle a market.`);
-    }
-    if (parsed.confidence < 0 || parsed.confidence > 10000) {
-      throw new Error(`Invalid confidence: ${parsed.confidence}`);
-    }
-
-    runtime.log(`[Step 3] AI Result: ${parsed.result}`);
-    runtime.log(`[Step 3] AI Confidence: ${parsed.confidence / 100}%`);
-
-    // Convert result string to Prediction enum value (0 = Yes, 1 = No)
-    const outcomeValue = parsed.result === "YES" ? 0 : 1;
+    // Convert to 6 decimals for on-chain storage
+    const settledPrice6Dec = BigInt(Math.round(currentPriceUsd * 1e6));
+    runtime.log(`[Step 3] Current ${market.asset} price: $${currentPriceUsd.toLocaleString()}`);
 
     // ─────────────────────────────────────────────────────────────
-    // Step 4: Write settlement report to contract (EVM Write)
+    // Step 4: Determine outcome — price check first, AI if ambiguous
     // ─────────────────────────────────────────────────────────────
-    runtime.log("[Step 4] Generating settlement report...");
+    const priceDiff = Math.abs(currentPriceUsd - targetPriceUsd) / targetPriceUsd;
+    let outcomeValue: number;
+    let confidence: number;
 
-    // Encode settlement data
+    if (priceDiff > 0.05) {
+      // Clear result (>5% away from target) — no AI needed
+      outcomeValue = currentPriceUsd >= targetPriceUsd ? 0 : 1;
+      confidence = 10000; // Maximum confidence
+      runtime.log(`[Step 4] Price clearly ${currentPriceUsd >= targetPriceUsd ? "above" : "below"} target (${(priceDiff * 100).toFixed(1)}% diff)`);
+      runtime.log(`[Step 4] Direct settlement: ${outcomeValue === 0 ? "YES" : "NO"} with 100% confidence`);
+    } else {
+      // Ambiguous (within 5%) — ask Gemini AI for confidence scoring
+      runtime.log(`[Step 4] Price within 5% of target (${(priceDiff * 100).toFixed(1)}% diff) — consulting AI...`);
+
+      const geminiResult = askGemini(runtime,
+        `${question}\n\nIMPORTANT CONTEXT: The current ${market.asset} price is $${currentPriceUsd.toLocaleString()} and the target is $${targetPriceUsd.toLocaleString()}. The price is ${(priceDiff * 100).toFixed(2)}% ${currentPriceUsd >= targetPriceUsd ? "above" : "below"} the target.`
+      );
+
+      const jsonMatch = geminiResult.geminiResponse.match(/\{[\s\S]*"result"[\s\S]*"confidence"[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error(`Could not find JSON in AI response: ${geminiResult.geminiResponse}`);
+      }
+      const parsed = JSON.parse(jsonMatch[0]) as GeminiResult;
+
+      if (!["YES", "NO"].includes(parsed.result)) {
+        throw new Error(`Cannot settle: AI returned ${parsed.result}. Only YES or NO can settle a market.`);
+      }
+      if (parsed.confidence < 0 || parsed.confidence > 10000) {
+        throw new Error(`Invalid confidence: ${parsed.confidence}`);
+      }
+
+      outcomeValue = parsed.result === "YES" ? 0 : 1;
+      confidence = parsed.confidence;
+      runtime.log(`[Step 4] AI Result: ${parsed.result} (${confidence / 100}% confidence)`);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Step 5: Write settlement report to contract (EVM Write)
+    // ─────────────────────────────────────────────────────────────
+    runtime.log("[Step 5] Generating settlement report...");
+    runtime.log(`[Step 5] Outcome: ${outcomeValue === 0 ? "YES" : "NO"}, Confidence: ${confidence}, Settled Price: $${currentPriceUsd}`);
+
+    // Encode settlement data (includes settledPrice for on-chain verifiability)
     const settlementData = encodeAbiParameters(SETTLEMENT_PARAMS, [
       marketId,
       outcomeValue,
-      parsed.confidence,
+      confidence,
+      settledPrice6Dec,
     ]);
 
     // Prepend 0x01 prefix so contract routes to _settleMarket
@@ -228,7 +284,7 @@ export function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
       })
       .result();
 
-    runtime.log(`[Step 4] Writing to contract: ${evmConfig.marketAddress}`);
+    runtime.log(`[Step 5] Writing to contract: ${evmConfig.marketAddress}`);
 
     const writeResult = evmClient
       .writeReport(runtime, {
@@ -242,7 +298,8 @@ export function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
 
     if (writeResult.txStatus === TxStatus.SUCCESS) {
       const txHash = bytesToHex(writeResult.txHash || new Uint8Array(32));
-      runtime.log(`[Step 4] ✓ Settlement successful: ${txHash}`);
+      runtime.log(`[Step 5] ✓ Settlement successful: ${txHash}`);
+      runtime.log(`[Step 5] Settled ${market.asset} market at $${currentPriceUsd} (target: $${targetPriceUsd})`);
       runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       return `Settled: ${txHash}`;
     }
@@ -256,3 +313,43 @@ export function onLogTrigger(runtime: Runtime<Config>, log: EVMLog): string {
     throw err;
   }
 }
+
+// ===========================
+// CoinGecko Price Fetcher
+// ===========================
+
+/**
+ * Builds a CoinGecko price request using the CRE HTTPClient pattern.
+ * Follows the same builder pattern as gemini.ts for consistency.
+ */
+const buildCoinGeckoRequest =
+  (assetId: string) =>
+  (sendRequester: HTTPSendRequester, _config: Config): { price: number } => {
+    const req = {
+      url: `https://api.coingecko.com/api/v3/simple/price?ids=${assetId}&vs_currencies=usd`,
+      method: "GET" as const,
+      headers: {
+        "Accept": "application/json",
+      },
+      cacheSettings: {
+        store: true,
+        maxAge: '30s',
+      },
+    };
+
+    const resp = sendRequester.sendRequest(req).result();
+    const bodyText = new TextDecoder().decode(resp.body);
+
+    if (!ok(resp)) {
+      throw new Error(`CoinGecko API error: ${resp.statusCode} - ${bodyText}`);
+    }
+
+    const data = JSON.parse(bodyText) as CoinGeckoPrice;
+    const price = data[assetId]?.usd;
+
+    if (!price) {
+      throw new Error(`CoinGecko returned no price for ${assetId}: ${bodyText}`);
+    }
+
+    return { price };
+  };

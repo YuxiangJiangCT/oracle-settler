@@ -3,8 +3,9 @@ pragma solidity 0.8.24;
 
 import {ReceiverTemplate} from "./interfaces/ReceiverTemplate.sol";
 
-/// @title PredictionMarket
-/// @notice A simplified prediction market for CRE bootcamp.
+/// @title OracleSettler
+/// @notice AI + Real Data powered prediction market with CRE automated resolution.
+/// @dev Extends bootcamp template with verifiable price data from CoinGecko.
 contract PredictionMarket is ReceiverTemplate {
     error MarketDoesNotExist();
     error MarketAlreadySettled();
@@ -15,10 +16,10 @@ contract PredictionMarket is ReceiverTemplate {
     error AlreadyClaimed();
     error TransferFailed();
 
-    event MarketCreated(uint256 indexed marketId, string question, address creator);
+    event MarketCreated(uint256 indexed marketId, string question, string asset, uint256 targetPrice, address creator);
     event PredictionMade(uint256 indexed marketId, address indexed predictor, Prediction prediction, uint256 amount);
     event SettlementRequested(uint256 indexed marketId, string question);
-    event MarketSettled(uint256 indexed marketId, Prediction outcome, uint16 confidence);
+    event MarketSettled(uint256 indexed marketId, Prediction outcome, uint16 confidence, uint256 settledPrice);
     event WinningsClaimed(uint256 indexed marketId, address indexed claimer, uint256 amount);
 
     enum Prediction {
@@ -36,6 +37,9 @@ contract PredictionMarket is ReceiverTemplate {
         uint256 totalYesPool;
         uint256 totalNoPool;
         string question;
+        string asset;           // CoinGecko asset ID (e.g., "bitcoin")
+        uint256 targetPrice;    // Target price in USD with 6 decimals (e.g., 100000e6)
+        uint256 settledPrice;   // Actual price at settlement time (6 decimals)
     }
 
     struct UserPrediction {
@@ -57,10 +61,16 @@ contract PredictionMarket is ReceiverTemplate {
     // │                       Create market                          │
     // ================================================================
 
-    /// @notice Create a new prediction market.
+    /// @notice Create a new prediction market with a price target.
     /// @param question The question for the market.
+    /// @param asset The CoinGecko asset ID (e.g., "bitcoin", "ethereum").
+    /// @param targetPrice The target price in USD with 6 decimals.
     /// @return marketId The ID of the newly created market.
-    function createMarket(string memory question) public returns (uint256 marketId) {
+    function createMarket(
+        string memory question,
+        string memory asset,
+        uint256 targetPrice
+    ) public returns (uint256 marketId) {
         marketId = nextMarketId++;
 
         markets[marketId] = Market({
@@ -72,10 +82,13 @@ contract PredictionMarket is ReceiverTemplate {
             outcome: Prediction.Yes,
             totalYesPool: 0,
             totalNoPool: 0,
-            question: question
+            question: question,
+            asset: asset,
+            targetPrice: targetPrice,
+            settledPrice: 0
         });
 
-        emit MarketCreated(marketId, question, msg.sender);
+        emit MarketCreated(marketId, question, asset, targetPrice, msg.sender);
     }
 
     // ================================================================
@@ -130,13 +143,13 @@ contract PredictionMarket is ReceiverTemplate {
     // │                 Market settlement by CRE                     │
     // ================================================================
 
-    /// @notice Settles a market from a CRE report with AI-determined outcome.
+    /// @notice Settles a market from a CRE report with verifiable price data + AI confidence.
     /// @dev Called via onReport → _processReport when prefix byte is 0x01.
-    /// @param report ABI-encoded (uint256 marketId, Prediction outcome, uint16 confidence)
+    /// @param report ABI-encoded (uint256 marketId, uint8 outcome, uint16 confidence, uint256 settledPrice)
     function _settleMarket(bytes calldata report) internal {
-        (uint256 marketId, Prediction outcome, uint16 confidence) = abi.decode(
+        (uint256 marketId, Prediction outcome, uint16 confidence, uint256 settledPrice) = abi.decode(
             report,
-            (uint256, Prediction, uint16)
+            (uint256, Prediction, uint16, uint256)
         );
 
         Market memory m = markets[marketId];
@@ -148,8 +161,9 @@ contract PredictionMarket is ReceiverTemplate {
         markets[marketId].confidence = confidence;
         markets[marketId].settledAt = uint48(block.timestamp);
         markets[marketId].outcome = outcome;
+        markets[marketId].settledPrice = settledPrice;
 
-        emit MarketSettled(marketId, outcome, confidence);
+        emit MarketSettled(marketId, outcome, confidence, settledPrice);
     }
 
     // ================================================================
@@ -158,14 +172,17 @@ contract PredictionMarket is ReceiverTemplate {
 
     /// @inheritdoc ReceiverTemplate
     /// @dev Routes to either market creation or settlement based on prefix byte.
-    ///      - No prefix → Create market (Day 1)
-    ///      - Prefix 0x01 → Settle market (Day 2)
+    ///      - No prefix → Create market
+    ///      - Prefix 0x01 → Settle market
     function _processReport(bytes calldata report) internal override {
         if (report.length > 0 && report[0] == 0x01) {
             _settleMarket(report[1:]);
         } else {
-            string memory question = abi.decode(report, (string));
-            createMarket(question);
+            (string memory question, string memory asset, uint256 targetPrice) = abi.decode(
+                report,
+                (string, string, uint256)
+            );
+            createMarket(question, asset, targetPrice);
         }
     }
 

@@ -15,6 +15,8 @@ import { encodeAbiParameters, parseAbiParameters } from "viem";
 // Inline types
 interface CreateMarketPayload {
   question: string;
+  asset: string;         // CoinGecko asset ID (e.g., "bitcoin")
+  targetPrice: number;   // Target price in USD (e.g., 100000)
 }
 
 type Config = {
@@ -26,8 +28,8 @@ type Config = {
     }>;
 };
 
-// ABI parameters for createMarket function
-const CREATE_MARKET_PARAMS = parseAbiParameters("string question");
+// ABI parameters for createMarket(string question, string asset, uint256 targetPrice)
+const CREATE_MARKET_PARAMS = parseAbiParameters("string question, string asset, uint256 targetPrice");
 
 export function onHttpTrigger(runtime: Runtime<Config>, payload: HTTPPayload): string {
   runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -45,10 +47,15 @@ export function onHttpTrigger(runtime: Runtime<Config>, payload: HTTPPayload): s
 
     const inputData = decodeJson(payload.input) as CreateMarketPayload;
     runtime.log(`[Step 1] Received market question: "${inputData.question}"`);
+    runtime.log(`[Step 1] Asset: ${inputData.asset}, Target Price: $${inputData.targetPrice}`);
 
     if (!inputData.question || inputData.question.trim().length === 0) {
       runtime.log("[ERROR] Question is required");
       return "Error: Question is required";
+    }
+    if (!inputData.asset) {
+      runtime.log("[ERROR] Asset is required");
+      return "Error: Asset is required (e.g., 'bitcoin')";
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -76,7 +83,13 @@ export function onHttpTrigger(runtime: Runtime<Config>, payload: HTTPPayload): s
     // ─────────────────────────────────────────────────────────────
     runtime.log("[Step 3] Encoding market data...");
 
-    const reportData = encodeAbiParameters(CREATE_MARKET_PARAMS, [inputData.question]);
+    // Convert target price to 6 decimals for on-chain storage
+    const targetPrice6Dec = BigInt(Math.round((inputData.targetPrice || 0) * 1e6));
+    const reportData = encodeAbiParameters(CREATE_MARKET_PARAMS, [
+      inputData.question,
+      inputData.asset,
+      targetPrice6Dec,
+    ]);
 
     // ─────────────────────────────────────────────────────────────
     // Step 4: Generate a signed CRE report
