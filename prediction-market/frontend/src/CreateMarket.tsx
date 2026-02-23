@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ethers } from "ethers";
-import { PREDICTION_MARKET_ABI, CONTRACT_ADDRESS, SEPOLIA } from "./contract";
+import { PREDICTION_MARKET_ABI, CONTRACT_ADDRESS } from "./contract";
 
 interface CreateMarketProps {
   provider: ethers.BrowserProvider;
@@ -32,7 +32,7 @@ export function CreateMarket({ provider, onCreated }: CreateMarketProps) {
       const priceBigInt = BigInt(Math.round(parseFloat(targetPrice) * 1e6));
       const tx = await contract.createMarket(question, asset, priceBigInt);
       setTxStatus("Waiting for confirmation...");
-      const receipt = await tx.wait();
+      await tx.wait();
       setTxStatus("Market created!");
       setQuestion("");
       setAsset("");

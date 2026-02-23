@@ -293,7 +293,9 @@ function App() {
 
       {/* Main */}
       <main className="main-content">
-        {renderPage()}
+        <div key={page} className="page-transition">
+          {renderPage()}
+        </div>
       </main>
 
       {/* Footer */}

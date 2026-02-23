@@ -2,53 +2,78 @@
 
 Automated prediction market settlement using **dual-source price verification (CoinGecko + CoinCap)**, **AI judgment from Gemini**, and **Chainlink Runtime Environment (CRE)** for trustless, on-chain execution.
 
-**Live Frontend**: [oracle-settler.vercel.app](https://oracle-settler.vercel.app) (deploy pending)
+**Live Frontend**: [oracle-settler.vercel.app](https://oracle-settler.vercel.app)
 
-## What Makes This Different
+---
 
-Most prediction market systems rely on either manual resolution (slow, biased) or pure AI (hallucination-prone). OracleSettler combines both approaches with dual-source price consensus:
+## The Problem
 
-- **Dual-source price verification**: CoinGecko + CoinCap cross-validated (>2% divergence = settlement rejected)
-- **Two-tier resolution**: >5% price difference = instant settlement, <5% = Gemini AI with confidence scoring
-- **Three CRE trigger types**: HTTP (create markets), Log (on-demand settlement), Cron (scheduled auto-settlement)
-- **Confidential HTTP** protects API keys inside CRE's WASM sandbox
-- **Multi-asset support**: Works with any CoinGecko-listed asset (BTC, ETH, SOL, etc.)
-- **Settlement Explorer**: Frontend visualizes the entire CRE pipeline for each settled market
-- **Cross-platform comparison**: Live price verification against multiple sources
+Prediction markets today face a **resolution bottleneck**:
+
+| Approach | Problem |
+|----------|---------|
+| **Manual resolution** | Slow, biased, single point of failure |
+| **Pure AI oracles** | Hallucination-prone, no verifiable data |
+| **Single price feed** | Manipulation risk, no redundancy |
+
+## Our Solution
+
+OracleSettler combines **three layers of trust** in a single CRE workflow:
+
+1. **Dual-source price consensus** — CoinGecko + CoinCap cross-validated (>2% divergence = reject)
+2. **Two-tier resolution** — >5% price diff = instant settlement; <5% = Gemini AI with confidence scoring
+3. **CRE-signed execution** — Multi-node consensus ensures no single party can manipulate outcomes
+
+### Who Benefits
+
+- **Users**: Trustless settlement — no admin can alter outcomes after the fact
+- **Chainlink**: Real-world CRE use case demonstrating 10 capabilities in production
+- **Developers**: Reference implementation for building CRE-powered DeFi applications
+
+---
 
 ## Architecture
 
+```mermaid
+flowchart TD
+    HTTP["HTTP Trigger<br/>(Market Creation)"] --> READ["EVM Read<br/>(Market Data)"]
+    LOG["Log Trigger<br/>(Settlement Request)"] --> READ
+    CRON["Cron Trigger<br/>(Every 6h)"] --> READ
+    READ --> CG["CoinGecko<br/>(Primary Price)"]
+    READ --> CC["CoinCap<br/>(Secondary Price)"]
+    CG & CC --> DIV{"Sources<br/>diverge >2%?"}
+    DIV -- "Yes" --> REJECT["❌ Reject<br/>Settlement"]
+    DIV -- "No" --> THRESH{">5% from<br/>target?"}
+    THRESH -- "Yes" --> DIRECT["Direct Settlement<br/>confidence = 100%"]
+    THRESH -- "No" --> AI["Gemini AI<br/>Analysis"]
+    DIRECT & AI --> CONSENSUS["CRE Signed<br/>Consensus Report"]
+    CONSENSUS --> WRITE["EVM Write<br/>_settleMarket()"]
+
+    style HTTP fill:#375BD2,color:#fff
+    style LOG fill:#375BD2,color:#fff
+    style CRON fill:#375BD2,color:#fff
+    style REJECT fill:#ef4444,color:#fff
+    style WRITE fill:#22c55e,color:#fff
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    CRE Workflow Orchestration                    │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  HTTP Trigger ──→ Create Market on-chain                        │
-│                                                                 │
-│  Log Trigger  ──→ SettlementRequested event caught              │
-│                    │                                            │
-│  Cron Trigger ──→ Every 6h: scan all markets for expiry         │
-│                    │                                            │
-│                    ▼                                            │
-│              EVM Read: market data (asset, targetPrice)          │
-│                    │                                            │
-│                    ▼                                            │
-│    Dual-Source Confidential HTTP: CoinGecko + CoinCap           │
-│         │                    │                                  │
-│         └──── Divergence >2%? → REJECT settlement               │
-│                    │ ✓ <2%                                      │
-│                    ▼                                            │
-│            Price Threshold Check                                │
-│           ┌───────┴───────┐                                     │
-│       >5% diff         <5% diff                                 │
-│     Direct result    Gemini AI analysis                         │
-│    confidence=100%   confidence=variable                        │
-│           └───────┬───────┘                                     │
-│                   ▼                                             │
-│         CRE Signed Report → EVM Write → _settleMarket()        │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+
+### Market Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created: createMarket()
+    Created --> Predicted: predict(YES/NO)
+    Predicted --> Predicted: More predictions
+    Predicted --> SettlementRequested: requestSettlement()
+    SettlementRequested --> Settling: CRE Log Trigger
+    Created --> Settling: CRE Cron (6h auto-scan)
+    Settling --> PriceFetch: Dual-Source HTTP
+    PriceFetch --> Rejected: Sources diverge >2%
+    PriceFetch --> Settled: Consensus reached
+    Settled --> Claimed: claim() by winners
+    Rejected --> SettlementRequested: Retry later
 ```
+
+---
 
 ## Frontend
 
@@ -67,6 +92,8 @@ cd prediction-market/frontend
 npm install
 npm run dev    # http://localhost:5173
 ```
+
+---
 
 ## Quick Start
 
@@ -98,6 +125,15 @@ cd contracts && forge build && cd ..
 
 # Install and run frontend
 cd frontend && npm install && npm run dev
+```
+
+Or use the Makefile:
+
+```bash
+make install   # Install all dependencies
+make build     # Build contracts + frontend
+make test      # Run all tests (22 passing)
+make dev       # Start frontend dev server
 ```
 
 ### Deploy
@@ -137,6 +173,8 @@ cre workflow simulate my-workflow --non-interactive --trigger-index 1 \
   --evm-tx-hash <SETTLEMENT_TX_HASH> --evm-event-index 0 --broadcast
 ```
 
+---
+
 ## Demo: Multi-Asset Settlement
 
 Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap prices:
@@ -149,7 +187,9 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 
 **Contract (Sepolia)**: [`0x204173d93b41D76c467D6A75856Ba03A3412B10d`](https://sepolia.etherscan.io/address/0x204173d93b41D76c467D6A75856Ba03A3412B10d)
 
-## CRE Capabilities Used (8+)
+---
+
+## CRE Capabilities Used (10)
 
 | # | Capability | Purpose |
 |---|-----------|---------|
@@ -164,11 +204,49 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 | 9 | **Consensus Aggregation** | Multi-node agreement on price data |
 | 10 | **Custom Compute** | Price threshold logic + source divergence check |
 
+---
+
+## Testing
+
+22 tests covering all contract functions, edge cases, and CRE integration:
+
+```
+$ forge test -vvv
+
+[PASS] test_createMarket_succeeds
+[PASS] test_createMarket_incrementsId
+[PASS] test_createMarket_emitsEvent
+[PASS] test_createMarket_viaCRE
+[PASS] test_predict_yes
+[PASS] test_predict_no
+[PASS] test_predict_revertsIfMarketNotExist
+[PASS] test_predict_revertsIfSettled
+[PASS] test_predict_revertsIfZeroValue
+[PASS] test_predict_revertsIfAlreadyPredicted
+[PASS] test_requestSettlement_emitsEvent
+[PASS] test_settleMarket_viaCRE
+[PASS] test_settle_revertsIfAlreadySettled
+[PASS] test_settle_revertsIfNotExist
+[PASS] test_claim_winnerGetsFullPool
+[PASS] test_claim_proportionalPayout
+[PASS] test_claim_revertsIfNotSettled
+[PASS] test_claim_revertsIfAlreadyClaimed
+[PASS] test_claim_revertsIfLoser
+[PASS] test_settle_setsAllFields
+[PASS] test_onReport_rejectsUnauthorizedCaller
+[PASS] test_requestSettlement_revertsIfNotExist
+
+Suite result: ok. 22 passed; 0 failed; 0 skipped
+```
+
+---
+
 ## Files Modified from Bootcamp Template
 
 | File | Changes | Why |
 |------|---------|-----|
 | `contracts/src/PredictionMarket.sol` | Added `asset`, `targetPrice`, `settledPrice` to Market struct; added `getNextMarketId()` | Support multi-asset markets with on-chain price verification |
+| `contracts/test/PredictionMarket.t.sol` | **New** — 22 Foundry tests | Full coverage: creation, prediction, settlement, claims, edge cases |
 | `my-workflow/logCallback.ts` | Refactored to use shared settlement logic | Clean architecture, code reuse with Cron trigger |
 | `my-workflow/cronCallback.ts` | **New** — Scheduled market scanner | Auto-settle expired markets without manual intervention |
 | `my-workflow/settlementLogic.ts` | **New** — Dual-source price fetch + threshold + AI + write | DRY principle across triggers with dual-source consensus |
@@ -176,6 +254,8 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 | `my-workflow/main.ts` | Added Cron trigger registration | Three trigger types for comprehensive automation |
 | `my-workflow/httpCallback.ts` | Updated for asset + targetPrice params | Support new market creation schema |
 | `frontend/` | **New** — React + TypeScript + ethers.js | Full market UI with Settlement Explorer |
+
+---
 
 ## How It Works
 
@@ -191,12 +271,14 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 8. **On-Chain Settlement**: CRE signs and writes the settlement report to the smart contract
 9. **Auto-Settlement**: Cron trigger runs every 6 hours to catch and settle any expired markets
 
+---
+
 ## Tech Stack
 
-- **Smart Contract**: Solidity 0.8.24 (Foundry)
-- **CRE Workflow**: TypeScript (Bun + CRE SDK)
+- **Smart Contract**: Solidity 0.8.24 (Foundry) — 240 lines, 22 tests
+- **CRE Workflow**: TypeScript (Bun + CRE SDK) — 10 capabilities, 3 triggers
 - **Price Oracles**: CoinGecko + CoinCap (dual-source via Confidential HTTP)
 - **AI**: Google Gemini 2.0 Flash (via Confidential HTTP)
-- **Frontend**: React + TypeScript + Vite + ethers.js v6
+- **Frontend**: React + TypeScript + Vite + ethers.js v6 — 15 components, 1650 lines
 - **Network**: Ethereum Sepolia Testnet
 - **CRE Forwarder**: `0x15fc6ae953e024d975e77382eeec56a9101f9f88`

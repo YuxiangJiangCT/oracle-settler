@@ -154,7 +154,9 @@ body::before {
 
 /* ===== HERO / CONNECT PROMPT ===== */
 .hero-panel {
-  background: rgba(16, 20, 36, 0.95);
+  background: rgba(16, 20, 36, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 20px;
   padding: 48px 32px;
   box-shadow: 0 8px 40px rgba(0,0,0,0.5);
@@ -219,17 +221,20 @@ body::before {
 
 /* ===== MARKET CARD ===== */
 .market-card {
-  background: rgba(16, 20, 36, 0.95);
+  background: rgba(16, 20, 36, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 16px;
   padding: 20px;
   border: 1px solid rgba(255,255,255,0.06);
-  transition: all 0.2s;
+  transition: all 0.3s ease;
   cursor: default;
 }
 
 .market-card:hover {
-  border-color: rgba(55, 91, 210, 0.3);
-  box-shadow: 0 4px 20px rgba(55, 91, 210, 0.1);
+  border-color: rgba(55, 91, 210, 0.4);
+  box-shadow: 0 0 20px rgba(55, 91, 210, 0.15), 0 8px 32px rgba(0,0,0,0.3);
+  transform: translateY(-2px);
 }
 
 .card-header {
@@ -513,7 +518,9 @@ body::before {
 }
 
 .bet-section {
-  background: rgba(16, 20, 36, 0.95);
+  background: rgba(16, 20, 36, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 16px;
   padding: 20px;
   border: 1px solid rgba(255,255,255,0.06);
@@ -670,7 +677,9 @@ body::before {
 
 /* ===== CLAIM PANEL ===== */
 .claim-panel {
-  background: rgba(16, 20, 36, 0.95);
+  background: rgba(16, 20, 36, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 16px;
   padding: 20px;
   border: 1px solid rgba(255,255,255,0.06);
@@ -720,7 +729,9 @@ body::before {
 
 /* ===== REQUEST SETTLEMENT ===== */
 .settlement-section {
-  background: rgba(16, 20, 36, 0.95);
+  background: rgba(16, 20, 36, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 16px;
   padding: 20px;
   border: 1px solid rgba(255,255,255,0.06);
@@ -788,7 +799,9 @@ body::before {
 
 /* ===== SETTLEMENT EXPLORER ===== */
 .explorer-section {
-  background: rgba(16, 20, 36, 0.95);
+  background: rgba(16, 20, 36, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-radius: 16px;
   padding: 24px;
   border: 1px solid rgba(55, 91, 210, 0.15);
@@ -1306,6 +1319,86 @@ body::before {
 .about-link:hover {
   background: rgba(55, 91, 210, 0.2);
   border-color: #375BD2;
+}
+
+/* ===== ANIMATIONS ===== */
+
+/* --- Staggered card entrance --- */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.market-card {
+  animation: fadeSlideUp 0.5s ease-out both;
+}
+.market-card:nth-child(1) { animation-delay: 0ms; }
+.market-card:nth-child(2) { animation-delay: 100ms; }
+.market-card:nth-child(3) { animation-delay: 200ms; }
+.market-card:nth-child(4) { animation-delay: 300ms; }
+.market-card:nth-child(5) { animation-delay: 400ms; }
+.market-card:nth-child(6) { animation-delay: 500ms; }
+
+/* --- Explorer step staggered entrance --- */
+.explorer-step {
+  animation: fadeSlideUp 0.4s ease-out both;
+}
+.explorer-step:nth-child(1) { animation-delay: 0ms; }
+.explorer-step:nth-child(2) { animation-delay: 80ms; }
+.explorer-step:nth-child(3) { animation-delay: 160ms; }
+.explorer-step:nth-child(4) { animation-delay: 240ms; }
+.explorer-step:nth-child(5) { animation-delay: 320ms; }
+.explorer-step:nth-child(6) { animation-delay: 400ms; }
+.explorer-step:nth-child(7) { animation-delay: 480ms; }
+
+/* --- Page transition --- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.page-transition {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* --- Active market pulse --- */
+@keyframes subtlePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.market-status.active {
+  animation: subtlePulse 2s ease-in-out infinite;
+}
+
+/* --- Button press feedback --- */
+.place-bet-btn:active:not(:disabled),
+.create-btn:active:not(:disabled),
+.settlement-btn:active:not(:disabled),
+.claim-btn:active:not(:disabled),
+.connect-btn:active {
+  transform: scale(0.98) !important;
+}
+
+/* --- Enhanced loading spinner (dual ring) --- */
+@keyframes ping {
+  75%, 100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.loading-spinner {
+  position: relative;
+}
+
+.loading-spinner::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid rgba(55, 91, 210, 0.3);
+  border-radius: 50%;
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 /* ===== RESPONSIVE ===== */
