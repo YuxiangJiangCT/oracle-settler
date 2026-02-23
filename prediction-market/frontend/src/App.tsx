@@ -1,7 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
-import { SEPOLIA } from "./contract";
+import {
+  SEPOLIA,
+  PREDICTION_MARKET_ABI,
+  CONTRACT_ADDRESS,
+} from "./contract";
+import type { Market } from "./contract";
 import { MarketList } from "./MarketList";
+import { PriceComparison } from "./PriceComparison";
+import { CreateMarket } from "./CreateMarket";
 import "./App.css";
 
 declare global {
@@ -10,13 +17,66 @@ declare global {
   }
 }
 
+type Page = "markets" | "compare" | "create";
+
 function App() {
   const [account, setAccount] = useState<string | null>(null);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
   const [wrongNetwork, setWrongNetwork] = useState(false);
+  const [page, setPage] = useState<Page>("markets");
+
+  // Shared market data for PriceComparison
+  const [markets, setMarkets] = useState<{ id: number; data: Market }[]>([]);
 
   const isMetaMaskInstalled = typeof window.ethereum !== "undefined";
+
+  const loadMarkets = useCallback(async () => {
+    try {
+      const rpcProvider =
+        provider || new ethers.JsonRpcProvider(SEPOLIA.rpcUrl);
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        PREDICTION_MARKET_ABI,
+        rpcProvider
+      );
+      const nextId = await contract.getNextMarketId();
+      const count = Number(nextId);
+      const loaded: { id: number; data: Market }[] = [];
+
+      for (let i = 0; i < count; i++) {
+        try {
+          const m = await contract.getMarket(i);
+          loaded.push({
+            id: i,
+            data: {
+              creator: m[0],
+              createdAt: Number(m[1]),
+              settledAt: Number(m[2]),
+              settled: m[3],
+              confidence: Number(m[4]),
+              outcome: Number(m[5]),
+              totalYesPool: m[6],
+              totalNoPool: m[7],
+              question: m[8],
+              asset: m[9],
+              targetPrice: m[10],
+              settledPrice: m[11],
+            },
+          });
+        } catch {
+          // skip individual market errors
+        }
+      }
+      setMarkets(loaded);
+    } catch (err) {
+      console.error("Failed to load markets:", err);
+    }
+  }, [provider]);
+
+  useEffect(() => {
+    loadMarkets();
+  }, [loadMarkets]);
 
   const switchToSepolia = async () => {
     try {
@@ -72,7 +132,6 @@ function App() {
     setWrongNetwork(false);
   };
 
-  // Listen for wallet events
   useEffect(() => {
     if (!window.ethereum) return;
 
@@ -97,7 +156,6 @@ function App() {
     };
   }, []);
 
-  // Auto-connect
   useEffect(() => {
     if (!isMetaMaskInstalled) return;
     const checkConnection = async () => {
@@ -115,14 +173,93 @@ function App() {
     checkConnection();
   }, [isMetaMaskInstalled]);
 
+  const renderPage = () => {
+    if (wrongNetwork) {
+      return (
+        <div className="hero-panel">
+          <h2>Wrong Network</h2>
+          <p>Please switch to Sepolia Testnet to interact with OracleSettler.</p>
+          <button className="connect-btn large" onClick={switchToSepolia}>
+            Switch to Sepolia
+          </button>
+        </div>
+      );
+    }
+
+    switch (page) {
+      case "markets":
+        return (
+          <>
+            <MarketList provider={provider} account={account} />
+            {!account && (
+              <div className="hero-panel" style={{ marginTop: 32 }}>
+                <h3>Connect to Interact</h3>
+                <p>Connect your wallet to place predictions, request settlements, and claim winnings.</p>
+                <button className="connect-btn large" onClick={connectWallet}>
+                  {isMetaMaskInstalled ? "Connect Wallet" : "Install MetaMask"}
+                </button>
+                <p className="hint">
+                  Powered by Chainlink CRE — AI-verified oracle settlements
+                </p>
+              </div>
+            )}
+          </>
+        );
+      case "compare":
+        return <PriceComparison markets={markets} />;
+      case "create":
+        return provider && account ? (
+          <CreateMarket
+            provider={provider}
+            onCreated={() => {
+              loadMarkets();
+              setPage("markets");
+            }}
+          />
+        ) : (
+          <div className="hero-panel">
+            <h3>Connect Wallet</h3>
+            <p>You need to connect your wallet to create a market.</p>
+            <button className="connect-btn large" onClick={connectWallet}>
+              {isMetaMaskInstalled ? "Connect Wallet" : "Install MetaMask"}
+            </button>
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="app-container">
       {/* Nav */}
       <nav className="nav-bar">
-        <div className="nav-logo">
-          <span className="logo-text">OracleSettler</span>
-          <span className="chain-badge">SEPOLIA</span>
-          <span className="cre-badge">CRE</span>
+        <div className="nav-left">
+          <div className="nav-logo">
+            <span className="logo-text" onClick={() => setPage("markets")} style={{ cursor: "pointer" }}>
+              OracleSettler
+            </span>
+            <span className="chain-badge">SEPOLIA</span>
+            <span className="cre-badge">CRE</span>
+          </div>
+          <div className="nav-tabs">
+            <button
+              className={`nav-tab ${page === "markets" ? "active" : ""}`}
+              onClick={() => setPage("markets")}
+            >
+              Markets
+            </button>
+            <button
+              className={`nav-tab ${page === "compare" ? "active" : ""}`}
+              onClick={() => setPage("compare")}
+            >
+              Compare
+            </button>
+            <button
+              className={`nav-tab ${page === "create" ? "active" : ""}`}
+              onClick={() => setPage("create")}
+            >
+              Create
+            </button>
+          </div>
         </div>
         <div className="nav-buttons">
           {!account ? (
@@ -147,34 +284,7 @@ function App() {
 
       {/* Main */}
       <main className="main-content">
-        {wrongNetwork ? (
-          <div className="hero-panel">
-            <h2>Wrong Network</h2>
-            <p>Please switch to Sepolia Testnet to interact with OracleSettler.</p>
-            <button className="connect-btn large" onClick={switchToSepolia}>
-              Switch to Sepolia
-            </button>
-          </div>
-        ) : !account ? (
-          <>
-            {/* Show markets even without wallet */}
-            <MarketList provider={null} account={null} />
-
-            {/* Connect prompt at bottom */}
-            <div className="hero-panel" style={{ marginTop: 32 }}>
-              <h3>Connect to Interact</h3>
-              <p>Connect your wallet to place predictions, request settlements, and claim winnings.</p>
-              <button className="connect-btn large" onClick={connectWallet}>
-                {isMetaMaskInstalled ? "Connect Wallet" : "Install MetaMask"}
-              </button>
-              <p className="hint">
-                Powered by Chainlink CRE — AI-verified oracle settlements
-              </p>
-            </div>
-          </>
-        ) : (
-          <MarketList provider={provider} account={account} />
-        )}
+        {renderPage()}
       </main>
 
       {/* Footer */}
