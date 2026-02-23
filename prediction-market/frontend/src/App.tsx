@@ -158,7 +158,7 @@ function App() {
         ) : !account ? (
           <>
             {/* Show markets even without wallet */}
-            <MarketList provider={null} />
+            <MarketList provider={null} account={null} />
 
             {/* Connect prompt at bottom */}
             <div className="hero-panel" style={{ marginTop: 32 }}>
@@ -173,7 +173,7 @@ function App() {
             </div>
           </>
         ) : (
-          <MarketList provider={provider} />
+          <MarketList provider={provider} account={account} />
         )}
       </main>
 

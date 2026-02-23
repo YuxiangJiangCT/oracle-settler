@@ -4,6 +4,7 @@ import { OddsBar } from "./OddsBar";
 interface MarketCardProps {
   market: Market;
   marketId: number;
+  onClick?: () => void;
 }
 
 function formatPrice(price: bigint): string {
@@ -23,13 +24,13 @@ function timeAgo(timestamp: number): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-export function MarketCard({ market, marketId }: MarketCardProps) {
+export function MarketCard({ market, marketId, onClick }: MarketCardProps) {
   const outcomeLabel = market.outcome === 0 ? "YES" : "NO";
   const outcomeClass = market.outcome === 0 ? "yes-wins" : "no-wins";
   const confidence = market.confidence / 100; // stored as basis points (e.g. 10000 = 100%)
 
   return (
-    <div className="market-card">
+    <div className="market-card" onClick={onClick} style={onClick ? { cursor: "pointer" } : undefined}>
       {/* Header: ID + Status */}
       <div className="card-header">
         <span className="market-id">#{marketId}</span>

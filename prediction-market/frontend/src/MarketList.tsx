@@ -7,15 +7,18 @@ import {
 } from "./contract";
 import type { Market } from "./contract";
 import { MarketCard } from "./MarketCard";
+import { MarketDetail } from "./MarketDetail";
 
 interface MarketListProps {
   provider: ethers.BrowserProvider | null;
+  account: string | null;
 }
 
-export function MarketList({ provider }: MarketListProps) {
+export function MarketList({ provider, account }: MarketListProps) {
   const [markets, setMarkets] = useState<{ id: number; data: Market }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedMarketId, setSelectedMarketId] = useState<number | null>(null);
 
   useEffect(() => {
     loadMarkets();
@@ -26,7 +29,6 @@ export function MarketList({ provider }: MarketListProps) {
     setError(null);
 
     try {
-      // Use provider if available, otherwise fallback to public RPC
       const rpcProvider =
         provider || new ethers.JsonRpcProvider(SEPOLIA.rpcUrl);
 
@@ -75,6 +77,23 @@ export function MarketList({ provider }: MarketListProps) {
     }
   };
 
+  // Detail view
+  if (selectedMarketId !== null) {
+    const selected = markets.find((m) => m.id === selectedMarketId);
+    if (selected) {
+      return (
+        <MarketDetail
+          market={selected.data}
+          marketId={selected.id}
+          provider={provider}
+          account={account}
+          onBack={() => setSelectedMarketId(null)}
+          onUpdate={loadMarkets}
+        />
+      );
+    }
+  }
+
   if (loading) {
     return (
       <div className="loading-state">
@@ -107,7 +126,12 @@ export function MarketList({ provider }: MarketListProps) {
       </div>
       <div className="market-grid">
         {markets.map((m) => (
-          <MarketCard key={m.id} market={m.data} marketId={m.id} />
+          <MarketCard
+            key={m.id}
+            market={m.data}
+            marketId={m.id}
+            onClick={() => setSelectedMarketId(m.id)}
+          />
         ))}
       </div>
     </>
