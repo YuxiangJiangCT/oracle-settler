@@ -9,6 +9,7 @@ import type { Market } from "./contract";
 import { MarketList } from "./MarketList";
 import { PriceComparison } from "./PriceComparison";
 import { CreateMarket } from "./CreateMarket";
+import { About } from "./About";
 import "./App.css";
 
 declare global {
@@ -17,7 +18,7 @@ declare global {
   }
 }
 
-type Page = "markets" | "compare" | "create";
+type Page = "markets" | "compare" | "create" | "about";
 
 function App() {
   const [account, setAccount] = useState<string | null>(null);
@@ -225,6 +226,8 @@ function App() {
             </button>
           </div>
         );
+      case "about":
+        return <About />;
     }
   };
 
@@ -258,6 +261,12 @@ function App() {
               onClick={() => setPage("create")}
             >
               Create
+            </button>
+            <button
+              className={`nav-tab ${page === "about" ? "active" : ""}`}
+              onClick={() => setPage("about")}
+            >
+              About
             </button>
           </div>
         </div>
