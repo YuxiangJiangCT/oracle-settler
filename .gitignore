@@ -24,3 +24,7 @@ Thumbs.db
 # CRE build artifacts
 *.wasm
 tmp.js
+.cre_build_tmp.js
+
+# Frontend build
+dist/
