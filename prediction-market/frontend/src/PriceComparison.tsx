@@ -81,8 +81,26 @@ export function PriceComparison({ markets }: PriceComparisonProps) {
                   <span className="comp-value">
                     {priceData?.loading
                       ? "Loading..."
-                      : currentPrice !== null
-                      ? formatUsd(currentPrice)
+                      : geckoPrice !== null
+                      ? formatUsd(geckoPrice)
+                      : "N/A"}
+                  </span>
+                </div>
+                <div className="comp-row">
+                  <span className="comp-label">CoinCap Live</span>
+                  <span className="comp-value">
+                    {priceData?.loading
+                      ? "Loading..."
+                      : capPrice !== null
+                      ? formatUsd(capPrice)
+                      : "N/A"}
+                  </span>
+                </div>
+                <div className="comp-row">
+                  <span className="comp-label">Source Divergence</span>
+                  <span className={`comp-value ${sourceDivergence !== null && sourceDivergence < 2 ? "highlight-green" : sourceDivergence !== null ? "highlight-yellow" : ""}`}>
+                    {sourceDivergence !== null
+                      ? `${sourceDivergence.toFixed(2)}% ${sourceDivergence < 2 ? "(within 2% threshold)" : "(above 2% threshold)"}`
                       : "N/A"}
                   </span>
                 </div>
