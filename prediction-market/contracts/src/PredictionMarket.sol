@@ -232,4 +232,9 @@ contract PredictionMarket is ReceiverTemplate {
     function getPrediction(uint256 marketId, address user) external view returns (UserPrediction memory) {
         return predictions[marketId][user];
     }
+
+    /// @notice Get total number of markets created.
+    function getNextMarketId() external view returns (uint256) {
+        return nextMarketId;
+    }
 }

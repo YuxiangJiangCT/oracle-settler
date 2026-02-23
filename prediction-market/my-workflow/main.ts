@@ -4,6 +4,7 @@ import { cre, Runner, getNetwork } from "@chainlink/cre-sdk";
 import { keccak256, toHex } from "viem";
 import { onHttpTrigger } from "./httpCallback";
 import { onLogTrigger } from "./logCallback";
+import { onCronTrigger } from "./cronCallback";
 
 // Config type (matches config.staging.json structure)
 type Config = {
@@ -36,11 +37,14 @@ const initWorkflow = (config: Config) => {
   const evmClient = new cre.capabilities.EVMClient(network.chainSelector.selector);
   const eventHash = keccak256(toHex(SETTLEMENT_REQUESTED_SIGNATURE));
 
+  // Initialize Cron capability for scheduled auto-settlement
+  const cronCapability = new cre.capabilities.CronCapability();
+
   return [
-    // Day 1: HTTP Trigger - Market Creation
+    // HTTP Trigger - Market Creation via webhook
     cre.handler(httpTrigger, onHttpTrigger),
-    
-    // Day 2: Log Trigger - Event-Driven Settlement ← NEW!
+
+    // Log Trigger - Event-Driven Settlement (on-demand)
     cre.handler(
       evmClient.logTrigger({
         addresses: [config.evms[0].marketAddress],
@@ -48,6 +52,12 @@ const initWorkflow = (config: Config) => {
         confidence: "CONFIDENCE_LEVEL_FINALIZED",
       }),
       onLogTrigger
+    ),
+
+    // Cron Trigger - Scheduled Auto-Settlement (every 6 hours)
+    cre.handler(
+      cronCapability.trigger({ schedule: "0 */6 * * *" }),
+      onCronTrigger
     ),
   ];
 };
