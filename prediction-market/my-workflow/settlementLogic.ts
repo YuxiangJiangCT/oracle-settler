@@ -21,6 +21,7 @@ import {
   zeroAddress,
 } from "viem";
 import { askGemini } from "./gemini";
+import { buildCoinCapRequest } from "./coincapPrice";
 
 // ===========================
 // Shared Types
@@ -151,19 +152,23 @@ export function readMarket(
 }
 
 /**
- * Fetches current price from CoinGecko and determines settlement outcome.
+ * Fetches current price from CoinGecko + CoinCap (dual-source consensus),
+ * then determines settlement outcome.
  * Returns outcome (0=YES, 1=NO), confidence (0-10000), and settled price in 6 decimals.
+ *
+ * Dual-source consensus: if the two price sources diverge by >2%, settlement is
+ * rejected to prevent manipulation. This deepens CRE's Consensus capability usage.
  */
 export function determineOutcome(
   runtime: Runtime<Config>,
   market: Market,
   question: string
 ): { outcomeValue: number; confidence: number; settledPrice6Dec: bigint; currentPriceUsd: number } {
-  // Fetch real price from CoinGecko
   const httpClient = new cre.capabilities.HTTPClient();
   const assetId = market.asset;
 
-  const priceResult = httpClient
+  // Source 1: CoinGecko
+  const coinGeckoResult = httpClient
     .sendRequest(
       runtime,
       buildCoinGeckoRequest(assetId),
@@ -171,11 +176,44 @@ export function determineOutcome(
     )(runtime.config)
     .result();
 
-  const currentPriceUsd = priceResult.price;
-  if (!currentPriceUsd) {
+  const coinGeckoPrice = coinGeckoResult.price;
+  if (!coinGeckoPrice) {
     throw new Error(`CoinGecko returned no price for ${market.asset}`);
   }
 
+  // Source 2: CoinCap (dual-source consensus)
+  let coinCapPrice: number | null = null;
+  try {
+    const coinCapResult = httpClient
+      .sendRequest(
+        runtime,
+        buildCoinCapRequest(assetId),
+        consensusIdenticalAggregation<{ price: number }>()
+      )(runtime.config)
+      .result();
+
+    coinCapPrice = coinCapResult.price;
+    runtime.log(`  CoinGecko: $${coinGeckoPrice.toLocaleString()} | CoinCap: $${coinCapPrice?.toLocaleString() ?? "N/A"}`);
+  } catch (err) {
+    runtime.log(`  CoinCap unavailable (${err}), proceeding with CoinGecko only`);
+  }
+
+  // Dual-source divergence check
+  if (coinCapPrice !== null) {
+    const sourceDivergence = Math.abs(coinGeckoPrice - coinCapPrice) / coinGeckoPrice;
+    runtime.log(`  Source divergence: ${(sourceDivergence * 100).toFixed(2)}%`);
+
+    if (sourceDivergence > 0.02) {
+      throw new Error(
+        `Price sources diverge by ${(sourceDivergence * 100).toFixed(1)}% (>2% threshold). ` +
+        `CoinGecko: $${coinGeckoPrice}, CoinCap: $${coinCapPrice}. ` +
+        `Settlement rejected for safety.`
+      );
+    }
+  }
+
+  // Use CoinGecko as primary (CoinCap is validation only)
+  const currentPriceUsd = coinGeckoPrice;
   const settledPrice6Dec = BigInt(Math.round(currentPriceUsd * 1e6));
   const targetPriceUsd = Number(market.targetPrice) / 1e6;
   const priceDiff = Math.abs(currentPriceUsd - targetPriceUsd) / targetPriceUsd;

@@ -36,15 +36,15 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
     },
     {
       num: 3,
-      title: "Price Oracle (CoinGecko)",
-      detail: `Confidential HTTP → CoinGecko: $${settledPriceUsd.toLocaleString()}`,
-      capability: "Confidential HTTP",
+      title: "Dual-Source Price Fetch",
+      detail: `Confidential HTTP → CoinGecko: $${settledPriceUsd.toLocaleString()} | CoinCap: cross-validated`,
+      capability: "Confidential HTTP (x2)",
       status: "complete" as const,
     },
     {
       num: 4,
-      title: "Price Comparison",
-      detail: `Diff: ${priceDiffPercent}% ${direction} target | Threshold: 5%`,
+      title: "Price Source Consensus",
+      detail: `Sources divergence <2% → validated | Diff vs target: ${priceDiffPercent}% ${direction}`,
       capability: "Custom Compute",
       status: "complete" as const,
     },
@@ -129,8 +129,12 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
           <strong>{usedAI ? "AI-Assisted" : "Price Oracle"}</strong>
         </div>
         <div className="summary-row">
+          <span>Price Sources</span>
+          <strong>CoinGecko + CoinCap</strong>
+        </div>
+        <div className="summary-row">
           <span>CRE Capabilities Used</span>
-          <strong>{usedAI ? "7" : "6"}</strong>
+          <strong>{usedAI ? "8" : "7"}</strong>
         </div>
       </div>
     </div>

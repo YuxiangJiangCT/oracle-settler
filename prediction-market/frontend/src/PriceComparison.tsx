@@ -39,15 +39,21 @@ export function PriceComparison({ markets }: PriceComparisonProps) {
           const priceData = prices.find((p) => p.asset === m.data.asset);
           const settledPriceUsd = Number(m.data.settledPrice) / 1e6;
           const targetPriceUsd = Number(m.data.targetPrice) / 1e6;
-          const currentPrice = priceData?.coingecko ?? null;
+          const geckoPrice = priceData?.coingecko ?? null;
+          const capPrice = priceData?.coincap ?? null;
+
+          // Source divergence
+          const sourceDivergence = geckoPrice !== null && capPrice !== null
+            ? Math.abs(geckoPrice - capPrice) / geckoPrice * 100
+            : null;
 
           // CRE outcome
           const creOutcome = m.data.outcome === 0 ? "YES" : "NO";
 
-          // What CoinGecko live price would suggest
+          // What live prices would suggest
           let liveOutcome: string | null = null;
-          if (currentPrice !== null && targetPriceUsd > 0) {
-            liveOutcome = currentPrice >= targetPriceUsd ? "YES" : "NO";
+          if (geckoPrice !== null && targetPriceUsd > 0) {
+            liveOutcome = geckoPrice >= targetPriceUsd ? "YES" : "NO";
           }
 
           const agrees = liveOutcome !== null && liveOutcome === creOutcome;
