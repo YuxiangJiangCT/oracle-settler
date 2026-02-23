@@ -1,194 +1,168 @@
-# CRE Bootcamp: AI-Powered Prediction Markets
+# OracleSettler: Real-Data + AI Prediction Market Resolution on CRE
 
-A 2-day hands-on bootcamp for building with [**Chainlink Runtime Environment (CRE)**](https://docs.chain.link/cre).
+Automated prediction market settlement using **real price data from CoinGecko**, **AI judgment from Gemini**, and **Chainlink Runtime Environment (CRE)** for trustless, on-chain execution.
 
-> **Disclaimer**: This tutorial represents an educational example to use a Chainlink system, product, or service and is provided to demonstrate how to interact with Chainlink's systems, products, and services to integrate them into your own. This template is provided "AS IS" and "AS AVAILABLE" without warranties of any kind, it has not been audited, and it may be missing key checks or error handling to make the usage of the system, product or service more clear. Do not use the code in this example in a production environment without completing your own audits and application of best practices. Neither Chainlink Labs, the Chainlink Foundation, nor Chainlink node operators are responsible for unintended outputs that are generated due to errors in code.
+## What Makes This Different
 
-## 📚 Book
+Most prediction market systems rely on either manual resolution (slow, biased) or pure AI (hallucination-prone). OracleSettler combines both approaches:
 
-The bootcamp tutorial is available in a markdown book format.
+- **Real price data** from CoinGecko API as ground truth — not pure AI guessing
+- **Two-tier resolution**: >5% price difference = instant settlement, <5% = Gemini AI with confidence scoring
+- **Three CRE trigger types**: HTTP (create markets), Log (on-demand settlement), Cron (scheduled auto-settlement)
+- **Confidential HTTP** protects API keys inside CRE's WASM sandbox
+- **Multi-asset support**: Works with any CoinGecko-listed asset (BTC, ETH, SOL, etc.)
+- **On-chain verifiability**: Settled price stored on-chain for transparency
 
-Either visit:
+## Architecture
 
-**https://smartcontractkit.github.io/cre-bootcamp-2026/**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    CRE Workflow Orchestration                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  HTTP Trigger ──→ Create Market on-chain                        │
+│                                                                 │
+│  Log Trigger  ──→ SettlementRequested event caught              │
+│                    │                                            │
+│  Cron Trigger ──→ Every 6h: scan all markets for expiry         │
+│                    │                                            │
+│                    ▼                                            │
+│              EVM Read: market data (asset, targetPrice)          │
+│                    │                                            │
+│                    ▼                                            │
+│         Confidential HTTP: CoinGecko real price                 │
+│                    │                                            │
+│                    ▼                                            │
+│            Price Threshold Check                                │
+│           ┌───────┴───────┐                                     │
+│       >5% diff         <5% diff                                 │
+│     Direct result    Gemini AI analysis                         │
+│    confidence=100%   confidence=variable                        │
+│           └───────┬───────┘                                     │
+│                   ▼                                             │
+│         CRE Signed Report → EVM Write → _settleMarket()        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-Or run locally:
+## Quick Start
+
+### Prerequisites
+
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) (forge, cast)
+- [Bun](https://bun.sh/) v1.0+
+- [CRE CLI](https://docs.chain.link/cre) (`curl -sSL https://cre.chain.link/install.sh | sh`)
+- Sepolia ETH ([faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia))
+- [Gemini API key](https://aistudio.google.com/apikey) (free)
+
+### Setup
 
 ```bash
-cargo install mdbook
-cd book
-mdbook serve --open
+# Clone and install
+git clone https://github.com/YuxiangJiangCT/oracle-settler.git
+cd oracle-settler/prediction-market
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your private key and Gemini API key
+
+# Install workflow dependencies
+cd my-workflow && bun install && cd ..
+
+# Compile contracts
+cd contracts && forge build && cd ..
 ```
 
-## Curriculum
-
-**Day 1: Foundations + Market Creation**
-
-- CRE Mental Model
-- Project Setup
-- Smart Contract Development
-- HTTP Trigger & EVM Write
-
-**Day 2: Complete Settlement Workflow**
-
-- Log Trigger
-- EVM Read
-- AI Integration (Gemini)
-- End-to-End Testing
-
-## What You'll Build
-
-An AI-powered prediction market using CRE capabilities:
-
-- **HTTP Trigger** - Create markets via API requests
-- **Log Trigger** - Event-driven settlement automation
-- **EVM Read** - Read market state from the blockchain
-- **HTTP Capability** - Query Gemini AI for real-world outcomes
-- **EVM Write** - Verified on-chain writes with DON consensus
-
-## Required Setup
-
-Complete these **before** the bootcamp:
-
-- [Node.js v20+](https://nodejs.org/)
-- [Bun v1.3+](https://bun.sh/)
-- [CRE CLI](https://docs.chain.link/cre/getting-started/cli-installation)
-- [Foundry](https://book.getfoundry.sh/getting-started/installation)
-- [Ethereum Sepolia in your wallet](https://chainlist.org/chain/11155111)
-- [Sepolia ETH from faucet](https://faucets.chain.link/)
-- [Gemini API Key](https://aistudio.google.com/apikey)
-
-## Running the Example
-
-### 1. Clone the repository
+### Deploy
 
 ```bash
-git clone https://github.com/smartcontractkit/cre-bootcamp-2026.git
-cd cre-bootcamp-2026
-```
-
-#### Repo structure
-
-The main focus of the bootcamp will be the following:
-
-```
-├── prediction-market
-│   ├── contracts  # smart contracts
-│   ├── my-workflow # CRE workflows
-│   ├── project.yaml # CRE project config
-│   └── secrets.yaml  # secrets for CRE to use at runtime
-```
-
-### 2. Set up environment variables
-
-Create `.env` in `prediction-market/` and set `CRE_ETH_PRIVATE_KEY` and `GEMINI_API_KEY_VAR` variables:
-
-```bash
-###############################################################################
-### REQUIRED ENVIRONMENT VARIABLES - SENSITIVE INFORMATION                  ###
-### DO NOT STORE RAW SECRETS HERE IN PLAINTEXT IF AVOIDABLE                 ###
-### DO NOT UPLOAD OR SHARE THIS FILE UNDER ANY CIRCUMSTANCES                ###
-###############################################################################
-
-# Ethereum private key or 1Password reference (e.g. op://vault/item/field)
-CRE_ETH_PRIVATE_KEY=YOUR_PRIVATE_KEY_HERE
-
-# Default target used when --target flag is not specified (e.g. staging-settings, production-settings, my-target)
-CRE_TARGET=staging-settings
-
-# Gemini configuration: API Key
-GEMINI_API_KEY_VAR=YOUR_GEMINI_API_KEY_HERE
-```
-
-### 3. Install workflow dependencies
-
-```bash
-cd prediction-market/my-workflow
-bun install
-cd ..
-```
-
-### 4. Deploy the smart contract
-
-```bash
-source .env
-cd contracts
-
-forge create src/PredictionMarket.sol:PredictionMarket \
-  --rpc-url "https://ethereum-sepolia-rpc.publicnode.com" \
-  --private-key $CRE_ETH_PRIVATE_KEY \
-  --broadcast \
+forge create --broadcast \
+  --rpc-url https://ethereum-sepolia-rpc.publicnode.com \
+  --private-key $YOUR_PRIVATE_KEY \
+  --root contracts \
+  src/PredictionMarket.sol:PredictionMarket \
   --constructor-args 0x15fc6ae953e024d975e77382eeec56a9101f9f88
 ```
 
-> Note: the contructor argument is the [CRE Forwarder Contract](https://docs.chain.link/cre/guides/workflow/using-evm-client/supported-networks-go#understanding-forwarder-addresses) address.
+Update `my-workflow/config.staging.json` with the deployed contract address.
 
-Save the deployed Prediction Market Contract address and update `my-workflow/config.staging.json`:
-
-```json
-{
-  "evms": [
-    {
-      "marketAddress": "0xYOUR_DEPLOYED_ADDRESS",
-      ...
-    }
-  ]
-}
-```
-
-### 5. Create a market (HTTP Trigger)
+### Create Markets & Settle
 
 ```bash
-cd ..  # Back to prediction-market/
-cre workflow simulate my-workflow --broadcast
+CONTRACT=0x204173d93b41D76c467D6A75856Ba03A3412B10d
+RPC=https://ethereum-sepolia-rpc.publicnode.com
+
+# Create a BTC market
+cast send --rpc-url $RPC --private-key $PK $CONTRACT \
+  "createMarket(string,string,uint256)" \
+  "Will BTC be above 50000 USD by March 1 2026?" "bitcoin" 50000000000
+
+# Request settlement
+cast send --rpc-url $RPC --private-key $PK $CONTRACT \
+  "requestSettlement(uint256)" 0
+
+# Run CRE workflow to settle (simulation)
+cre workflow simulate my-workflow --non-interactive --trigger-index 1 \
+  --evm-tx-hash <SETTLEMENT_TX_HASH> --evm-event-index 0
+
+# Run with broadcast to settle on-chain
+cre workflow simulate my-workflow --non-interactive --trigger-index 1 \
+  --evm-tx-hash <SETTLEMENT_TX_HASH> --evm-event-index 0 --broadcast
 ```
 
-Select HTTP trigger (option 1) and enter:
+## Demo: Multi-Asset Settlement
 
-```json
-{ "question": "Will Argentina win the 2022 World Cup?" }
-```
+Three markets deployed and settled on Sepolia with real CoinGecko prices:
 
-### 6. Place a prediction
+| Market | Asset | Question | Target | Actual Price | Outcome | Confidence |
+|--------|-------|----------|--------|-------------|---------|-----------|
+| #0 | BTC | Will BTC be above $50,000? | $50,000 | $65,389 | YES | 100% |
+| #1 | ETH | Will ETH be above $10,000? | $10,000 | $1,883 | NO | 100% |
+| #2 | SOL | Will SOL be above $100? | $100 | $79 | NO | 100% |
 
-```bash
-export MARKET_ADDRESS=0xYOUR_DEPLOYED_ADDRESS
+**Contract (Sepolia)**: [`0x204173d93b41D76c467D6A75856Ba03A3412B10d`](https://sepolia.etherscan.io/address/0x204173d93b41D76c467D6A75856Ba03A3412B10d)
 
-cast send $MARKET_ADDRESS \
-  "predict(uint256,uint8)" 0 0 \
-  --value 0.01ether \
-  --rpc-url "https://ethereum-sepolia-rpc.publicnode.com" \
-  --private-key $CRE_ETH_PRIVATE_KEY
-```
+## CRE Capabilities Used
 
-> Note: `0 0` above corresponds to do the Market Id and the prediction (Yes = 0, No = 1). See the `predict()` function in `./prediction-market/contracts/src/PredictionMarket.sol`
+| Capability | Purpose |
+|-----------|---------|
+| **HTTP Trigger** | Market creation via webhook |
+| **Log Trigger** | Event-driven on-demand settlement |
+| **Cron Trigger** | Scheduled auto-settlement every 6 hours |
+| **EVM Read** | Read market data (asset, targetPrice, pools) |
+| **EVM Write** | Write signed settlement report to contract |
+| **Confidential HTTP** | CoinGecko price API + Gemini AI (API keys protected in WASM) |
+| **Consensus Aggregation** | Distributed agreement on price data |
 
-### 7. Request settlement
+## Files Modified from Bootcamp Template
 
-Request settlement by passing in the relevant Market Id.
+| File | Changes | Why |
+|------|---------|-----|
+| `contracts/src/PredictionMarket.sol` | Added `asset`, `targetPrice`, `settledPrice` to Market struct; added `getNextMarketId()` | Support multi-asset markets with on-chain price verification |
+| `my-workflow/logCallback.ts` | Refactored to use shared settlement logic | Clean architecture, code reuse with Cron trigger |
+| `my-workflow/cronCallback.ts` | **New** — Scheduled market scanner | Auto-settle expired markets without manual intervention |
+| `my-workflow/settlementLogic.ts` | **New** — Shared price fetch + threshold + AI + write | DRY principle across Log and Cron triggers |
+| `my-workflow/main.ts` | Added Cron trigger registration | Three trigger types for comprehensive automation |
+| `my-workflow/httpCallback.ts` | Updated for asset + targetPrice params | Support new market creation schema |
 
-```bash
-cast send $MARKET_ADDRESS \
-  "requestSettlement(uint256)" 0 \
-  --rpc-url "https://ethereum-sepolia-rpc.publicnode.com" \
-  --private-key $CRE_ETH_PRIVATE_KEY
-```
+## How It Works
 
-Save the transaction hash!
+1. **Market Creation**: User calls `createMarket("Will BTC be above $50K?", "bitcoin", 50000e6)` specifying the CoinGecko asset ID and target price in 6 decimals
+2. **Prediction**: Users bet YES or NO by sending ETH to `predict(marketId, prediction)`
+3. **Settlement Request**: Anyone calls `requestSettlement(marketId)` which emits a `SettlementRequested` event
+4. **CRE Catches Event**: The Log Trigger picks up the event and initiates settlement
+5. **Price Verification**: CRE makes a confidential HTTP call to CoinGecko to get the real asset price
+6. **Outcome Determination**:
+   - If price is >5% away from target: instant settlement (no AI needed)
+   - If price is within 5%: Gemini AI analyzes with full context and provides confidence score
+7. **On-Chain Settlement**: CRE signs and writes the settlement report to the smart contract
+8. **Auto-Settlement**: Cron trigger runs every 6 hours to catch and settle any expired markets
 
-### 8. Settle the market (Log Trigger)
+## Tech Stack
 
-```bash
-cre workflow simulate my-workflow --broadcast
-```
-
-Select Log trigger (option 2), enter the tx hash from step 7 and event index `0`.
-
-### 9. Claim winnings
-
-```bash
-cast send $MARKET_ADDRESS \
-  "claim(uint256)" 0 \
-  --rpc-url "https://ethereum-sepolia-rpc.publicnode.com" \
-  --private-key $CRE_ETH_PRIVATE_KEY
-```
+- **Smart Contract**: Solidity 0.8.24 (Foundry)
+- **CRE Workflow**: TypeScript (Bun + CRE SDK)
+- **Price Oracle**: CoinGecko API (via Confidential HTTP)
+- **AI**: Google Gemini 2.0 Flash (via Confidential HTTP)
+- **Network**: Ethereum Sepolia Testnet
+- **CRE Forwarder**: `0x15fc6ae953e024d975e77382eeec56a9101f9f88`
