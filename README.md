@@ -184,8 +184,8 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 
 | Market | Asset | Question | Target | Actual Price | Outcome | Confidence |
 |--------|-------|----------|--------|-------------|---------|-----------|
-| #0 | BTC | Will BTC be above $100,000? | $100,000 | $63,891 | NO | 75% |
-| #1 | ETH | Will ETH be above $5,000? | $5,000 | $1,853 | NO | 75% |
+| #0 | BTC | Will BTC be above $100,000? | $100,000 | $64,164 | NO | 75% |
+| #1 | ETH | Will ETH be above $5,000? | $5,000 | $1,858 | NO | 75% |
 | #2 | SOL | Will SOL be above $200? | $200 | $79 | NO | 75% |
 
 **Contract (Sepolia)**: [`0x77C8FbA1CB7816b546f54C2C33EeDf50434769Da`](https://sepolia.etherscan.io/address/0x77C8FbA1CB7816b546f54C2C33EeDf50434769Da)
@@ -284,7 +284,7 @@ Suite result: ok. 35 passed; 0 failed; 0 skipped
 | `my-workflow/coincapPrice.ts` | **New** — CoinCap price fetcher | Second independent price source for consensus |
 | `my-workflow/main.ts` | Added Cron trigger registration | Three trigger types for comprehensive automation |
 | `my-workflow/httpCallback.ts` | Updated for asset + targetPrice params | Support new market creation schema |
-| `frontend/` | **New** — React + TypeScript + ethers.js | Full market UI with Settlement Explorer |
+| `frontend/` | **New** — React + TypeScript + ethers.js + IDKit | Full market UI with Settlement Explorer + World ID verification |
 
 ---
 
@@ -311,6 +311,6 @@ Suite result: ok. 35 passed; 0 failed; 0 skipped
 - **CRE Workflow**: TypeScript (Bun + CRE SDK) — 10 capabilities, 3 triggers
 - **Price Oracles**: CoinGecko + CoinCap (dual-source via Confidential HTTP)
 - **AI**: Google Gemini 2.0 Flash (via Confidential HTTP)
-- **Frontend**: React + TypeScript + Vite + ethers.js v6 — 15 components, 1650 lines
+- **Frontend**: React + TypeScript + Vite + ethers.js v6 + World ID IDKit — 15 components, 1700 lines
 - **Network**: Ethereum Sepolia Testnet
 - **CRE Forwarder**: `0x15fc6ae953e024d975e77382eeec56a9101f9f88`

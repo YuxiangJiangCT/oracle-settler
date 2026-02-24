@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { ethers } from "ethers";
+import { IDKitWidget, VerificationLevel } from "@worldcoin/idkit";
+import type { ISuccessResult } from "@worldcoin/idkit";
 import { PREDICTION_MARKET_ABI, CONTRACT_ADDRESS } from "./contract";
+
+const WORLD_ID_APP_ID = "app_e5fb2e27e8b9d3c7ea376b845676f05a";
+const WORLD_ID_ACTION = "create-market";
 
 interface CreateMarketProps {
   provider: ethers.BrowserProvider;
+  account: string;
   onCreated: () => void;
 }
 
-export function CreateMarket({ provider, onCreated }: CreateMarketProps) {
+export function CreateMarket({ provider, account, onCreated }: CreateMarketProps) {
   const [question, setQuestion] = useState("");
   const [asset, setAsset] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
@@ -20,9 +26,10 @@ export function CreateMarket({ provider, onCreated }: CreateMarketProps) {
     { label: "SOL > $200", question: "Will Solana exceed $200?", asset: "solana", price: "200" },
   ];
 
-  const createMarket = async () => {
-    if (!question || !asset || !targetPrice) return;
+  const isFormValid = question && asset && targetPrice;
 
+  const createMarket = async () => {
+    if (!isFormValid) return;
     setLoading(true);
     setTxStatus("Creating market...");
 
@@ -34,19 +41,59 @@ export function CreateMarket({ provider, onCreated }: CreateMarketProps) {
       setTxStatus("Waiting for confirmation...");
       await tx.wait();
       setTxStatus("Market created!");
-      setQuestion("");
-      setAsset("");
-      setTargetPrice("");
+      resetForm();
       onCreated();
     } catch (err: any) {
-      if (err.code === "ACTION_REJECTED") {
-        setTxStatus("Transaction cancelled");
-      } else {
-        setTxStatus(`Error: ${err.reason || err.message}`);
-      }
+      handleError(err);
     } finally {
       setLoading(false);
       setTimeout(() => setTxStatus(""), 5000);
+    }
+  };
+
+  const createMarketVerified = async (result: ISuccessResult) => {
+    if (!isFormValid) return;
+    setLoading(true);
+    setTxStatus("Creating verified market with World ID proof...");
+
+    try {
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, PREDICTION_MARKET_ABI, signer);
+      const priceBigInt = BigInt(Math.round(parseFloat(targetPrice) * 1e6));
+
+      // Decode ABI-encoded proof values for the contract
+      const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+      const root = abiCoder.decode(["uint256"], result.merkle_root)[0];
+      const nullifierHash = abiCoder.decode(["uint256"], result.nullifier_hash)[0];
+      const proof = abiCoder.decode(["uint256[8]"], result.proof)[0];
+
+      const tx = await contract.createMarketVerified(
+        question, asset, priceBigInt, root, nullifierHash, proof
+      );
+      setTxStatus("Waiting for confirmation...");
+      await tx.wait();
+      setTxStatus("Verified market created! (World ID)");
+      resetForm();
+      onCreated();
+    } catch (err: any) {
+      handleError(err);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setTxStatus(""), 5000);
+    }
+  };
+
+  const resetForm = () => {
+    setQuestion("");
+    setAsset("");
+    setTargetPrice("");
+  };
+
+  const handleError = (err: any) => {
+    if (err.code === "ACTION_REJECTED") {
+      setTxStatus("Transaction cancelled");
+    } else {
+      setTxStatus(`Error: ${err.reason || err.message}`);
     }
   };
 
@@ -117,21 +164,41 @@ export function CreateMarket({ provider, onCreated }: CreateMarketProps) {
           </div>
         </div>
 
-        <button
-          className="create-btn"
-          onClick={createMarket}
-          disabled={loading || !question || !asset || !targetPrice}
-        >
-          {loading ? "Creating..." : "Create Market"}
-        </button>
+        {/* Action buttons */}
+        <div className="create-buttons">
+          <button
+            className="create-btn"
+            onClick={createMarket}
+            disabled={loading || !isFormValid}
+          >
+            {loading ? "Creating..." : "Create Market"}
+          </button>
+
+          <IDKitWidget
+            app_id={WORLD_ID_APP_ID as `app_${string}`}
+            action={WORLD_ID_ACTION}
+            signal={account}
+            onSuccess={createMarketVerified}
+            verification_level={VerificationLevel.Device}
+          >
+            {({ open }) => (
+              <button
+                className="create-btn worldid-btn"
+                onClick={open}
+                disabled={loading || !isFormValid}
+              >
+                {loading ? "Creating..." : "Create with World ID"}
+              </button>
+            )}
+          </IDKitWidget>
+        </div>
       </div>
 
       {txStatus && <div className="tx-status">{txStatus}</div>}
 
       <div className="create-note">
-        Markets are settled by Chainlink CRE using 3 triggers: Log (on-demand),
-        Cron (automatic scan), and HTTP (price oracle). Settlement uses CoinGecko
-        for price data with Gemini AI as a fallback for borderline cases.
+        <strong>World ID</strong> adds sybil resistance — each human can only create one verified
+        market. Regular market creation remains available for CRE-triggered workflows.
       </div>
     </div>
   );

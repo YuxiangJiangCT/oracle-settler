@@ -213,6 +213,7 @@ function App() {
         return provider && account ? (
           <CreateMarket
             provider={provider}
+            account={account}
             onCreated={() => {
               loadMarkets();
               setPage("markets");
