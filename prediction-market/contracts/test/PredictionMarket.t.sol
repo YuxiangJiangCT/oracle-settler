@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
 import {PredictionMarket} from "../src/PredictionMarket.sol";
+import {IWorldID} from "../src/interfaces/IWorldID.sol";
 
 contract PredictionMarketTest is Test {
     PredictionMarket public market;
@@ -12,7 +13,8 @@ contract PredictionMarketTest is Test {
     address charlie = makeAddr("charlie");
 
     function setUp() public {
-        market = new PredictionMarket(address(this));
+        // World ID disabled (address(0)) for base tests
+        market = new PredictionMarket(address(this), IWorldID(address(0)), "", "");
         market.setForwarderAddress(address(this));
 
         vm.deal(alice, 10 ether);
@@ -466,5 +468,52 @@ contract PredictionMarketTest is Test {
         market.claim(0);
         // Alice is only YES bettor so she gets the entire pool
         assertEq(alice.balance - balBefore, totalPool);
+    }
+
+    // ================================================================
+    //  WORLD ID TESTS (3 tests)
+    // ================================================================
+
+    function test_createMarketVerified_worksWhenWorldIdDisabled() public {
+        // worldId == address(0) in setUp, so verification is skipped
+        uint256[8] memory emptyProof;
+        uint256 id = market.createMarketVerified("Q?", "bitcoin", 50000e6, 0, 0, emptyProof);
+        assertEq(id, 0);
+
+        PredictionMarket.Market memory m = market.getMarket(0);
+        assertEq(m.question, "Q?");
+        assertEq(m.asset, "bitcoin");
+    }
+
+    function test_worldId_immutableIsZeroWhenDisabled() public view {
+        assertEq(address(market.worldId()), address(0));
+    }
+
+    function test_createMarketVerified_withMockWorldId() public {
+        // Deploy a mock World ID that always passes
+        MockWorldID mockWid = new MockWorldID();
+        PredictionMarket verifiedMarket = new PredictionMarket(
+            address(this),
+            IWorldID(address(mockWid)),
+            "app_test123",
+            "create-market"
+        );
+
+        uint256[8] memory fakeProof;
+        uint256 id = verifiedMarket.createMarketVerified("BTC test", "bitcoin", 100000e6, 123, 456, fakeProof);
+        assertEq(id, 0);
+
+        // Same nullifier should revert (duplicate)
+        vm.expectRevert(PredictionMarket.DuplicateNullifier.selector);
+        verifiedMarket.createMarketVerified("ETH test", "ethereum", 5000e6, 123, 456, fakeProof);
+    }
+}
+
+/// @dev Mock World ID that always accepts proofs (for testing only).
+contract MockWorldID {
+    function verifyProof(
+        uint256, uint256, uint256, uint256, uint256, uint256[8] calldata
+    ) external pure {
+        // Always passes — mock for testing
     }
 }

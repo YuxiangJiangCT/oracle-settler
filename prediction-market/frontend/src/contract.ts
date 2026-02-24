@@ -9,7 +9,7 @@ export const SEPOLIA = {
   currency: { name: "Sepolia ETH", symbol: "ETH", decimals: 18 },
 };
 
-export const CONTRACT_ADDRESS = "0xA1378FDb0B94CFAAF1746C0c927693A249FC71a3";
+export const CONTRACT_ADDRESS = "0x557542Bf475143a2f4F620E7C05bc8d913c55324";
 
 export const PREDICTION_MARKET_ABI = [
   // Read
@@ -25,6 +25,8 @@ export const PREDICTION_MARKET_ABI = [
   "function claim(uint256 marketId)",
   "function cancelMarket(uint256 marketId)",
   "function refund(uint256 marketId)",
+  "function createMarketVerified(string question, string asset, uint256 targetPrice, uint256 root, uint256 nullifierHash, uint256[8] proof) returns (uint256)",
+  "function worldId() view returns (address)",
 
   // Events
   "event MarketCreated(uint256 indexed marketId, string question, string asset, uint256 targetPrice, uint48 deadline, address creator)",

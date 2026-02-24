@@ -2,11 +2,16 @@
 pragma solidity 0.8.24;
 
 import {ReceiverTemplate} from "./interfaces/ReceiverTemplate.sol";
+import {IWorldID} from "./interfaces/IWorldID.sol";
+import {ByteHasher} from "./helpers/ByteHasher.sol";
 
 /// @title OracleSettler
 /// @notice AI + Real Data powered prediction market with CRE automated resolution.
 /// @dev Extends bootcamp template with verifiable price data from CoinGecko.
+///      Optionally integrates World ID for sybil-resistant market creation.
 contract PredictionMarket is ReceiverTemplate {
+    using ByteHasher for bytes;
+
     error MarketDoesNotExist();
     error MarketAlreadySettled();
     error MarketNotSettled();
@@ -18,6 +23,7 @@ contract PredictionMarket is ReceiverTemplate {
     error NothingToClaim();
     error AlreadyClaimed();
     error TransferFailed();
+    error DuplicateNullifier();
 
     event MarketCreated(uint256 indexed marketId, string question, string asset, uint256 targetPrice, uint48 deadline, address creator);
     event PredictionMade(uint256 indexed marketId, address indexed predictor, Prediction prediction, uint256 amount);
@@ -59,10 +65,28 @@ contract PredictionMarket is ReceiverTemplate {
     mapping(uint256 marketId => Market market) internal markets;
     mapping(uint256 marketId => mapping(address user => UserPrediction)) internal predictions;
 
-    /// @notice Constructor sets the Chainlink Forwarder address for security
-    /// @param _forwarderAddress The address of the Chainlink KeystoneForwarder contract
-    /// @dev For Sepolia testnet, use: 0x15fc6ae953e024d975e77382eeec56a9101f9f88
-    constructor(address _forwarderAddress) ReceiverTemplate(_forwarderAddress) {}
+    // ── World ID (optional sybil resistance) ─────────────────
+    IWorldID public immutable worldId;
+    uint256 internal immutable externalNullifier;
+    mapping(uint256 => bool) internal nullifierHashes;
+
+    /// @notice Constructor sets CRE Forwarder + optional World ID for sybil resistance.
+    /// @param _forwarderAddress Chainlink KeystoneForwarder (Sepolia: 0x15fc...9f88)
+    /// @param _worldId WorldIDRouter address (address(0) to disable)
+    /// @param _appId World ID app ID (e.g., "app_...")
+    /// @param _actionId World ID action ID (e.g., "create-market")
+    constructor(
+        address _forwarderAddress,
+        IWorldID _worldId,
+        string memory _appId,
+        string memory _actionId
+    ) ReceiverTemplate(_forwarderAddress) {
+        worldId = _worldId;
+        externalNullifier = abi.encodePacked(
+            abi.encodePacked(_appId).hashToField(),
+            _actionId
+        ).hashToField();
+    }
 
     // ================================================================
     // │                       Create market                          │
@@ -108,6 +132,46 @@ contract PredictionMarket is ReceiverTemplate {
         });
 
         emit MarketCreated(marketId, question, asset, targetPrice, deadline, msg.sender);
+    }
+
+    // ================================================================
+    // │              World ID Verified Market Creation                │
+    // ================================================================
+
+    /// @notice Create a market with World ID sybil resistance.
+    /// @dev Each verified human can create one market per action (nullifier prevents replay).
+    function createMarketVerified(
+        string memory question,
+        string memory asset,
+        uint256 targetPrice,
+        uint256 root,
+        uint256 nullifierHash,
+        uint256[8] calldata proof
+    ) external returns (uint256 marketId) {
+        _verifyWorldId(msg.sender, root, nullifierHash, proof);
+        return createMarket(question, asset, targetPrice);
+    }
+
+    /// @notice Internal World ID proof verification.
+    function _verifyWorldId(
+        address signal,
+        uint256 root,
+        uint256 nullifierHash,
+        uint256[8] calldata proof
+    ) internal {
+        if (address(worldId) == address(0)) return; // World ID disabled
+        if (nullifierHashes[nullifierHash]) revert DuplicateNullifier();
+
+        worldId.verifyProof(
+            root,
+            1, // groupId = 1 (Orb-verified)
+            abi.encodePacked(signal).hashToField(),
+            nullifierHash,
+            externalNullifier,
+            proof
+        );
+
+        nullifierHashes[nullifierHash] = true;
     }
 
     // ================================================================

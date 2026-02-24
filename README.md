@@ -135,7 +135,7 @@ Or use the Makefile:
 ```bash
 make install   # Install all dependencies
 make build     # Build contracts + frontend
-make test      # Run all tests (32 passing)
+make test      # Run all tests (35 passing)
 make dev       # Start frontend dev server
 ```
 
@@ -155,7 +155,7 @@ Update `my-workflow/config.staging.json` with the deployed contract address.
 ### Create Markets & Settle
 
 ```bash
-CONTRACT=0xA1378FDb0B94CFAAF1746C0c927693A249FC71a3
+CONTRACT=0x557542Bf475143a2f4F620E7C05bc8d913c55324
 RPC=https://ethereum-sepolia-rpc.publicnode.com
 
 # Create a BTC market
@@ -188,7 +188,7 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 | #1 | ETH | Will ETH be above $5,000? | $5,000 | $1,853 | NO | 75% |
 | #2 | SOL | Will SOL be above $200? | $200 | $79 | NO | 75% |
 
-**Contract (Sepolia)**: [`0xA1378FDb0B94CFAAF1746C0c927693A249FC71a3`](https://sepolia.etherscan.io/address/0xA1378FDb0B94CFAAF1746C0c927693A249FC71a3)
+**Contract (Sepolia)**: [`0x557542Bf475143a2f4F620E7C05bc8d913c55324`](https://sepolia.etherscan.io/address/0x557542Bf475143a2f4F620E7C05bc8d913c55324)
 
 ---
 
@@ -211,7 +211,7 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 
 ## Testing
 
-32 tests covering all contract functions, edge cases, cancel/refund, deadline enforcement, and fuzz testing:
+35 tests covering all contract functions, World ID integration, cancel/refund, deadline enforcement, and fuzz testing:
 
 ```
 $ forge test -vvv
@@ -255,12 +255,17 @@ $ forge test -vvv
 [PASS] test_cancelMarket_revertsIfSettled
 [PASS] test_refund_afterCancel
 
+# World ID (3)
+[PASS] test_createMarketVerified_worksWhenWorldIdDisabled
+[PASS] test_worldId_immutableIsZeroWhenDisabled
+[PASS] test_createMarketVerified_withMockWorldId
+
 # Edge Cases & Fuzz (3)
 [PASS] test_onReport_rejectsUnauthorizedCaller
 [PASS] test_multipleMarkets_isolation
 [PASS] testFuzz_claim_proportionalPayout (256 runs)
 
-Suite result: ok. 32 passed; 0 failed; 0 skipped
+Suite result: ok. 35 passed; 0 failed; 0 skipped
 ```
 
 ---
@@ -269,8 +274,10 @@ Suite result: ok. 32 passed; 0 failed; 0 skipped
 
 | File | Changes | Why |
 |------|---------|-----|
-| `contracts/src/PredictionMarket.sol` | Added `asset`, `targetPrice`, `settledPrice`, `deadline` to Market struct; added `cancelMarket()`, `refund()`, `createMarketWithDeadline()`; claim division-by-zero protection | Support multi-asset markets with on-chain price verification, market governance, and deadline enforcement |
-| `contracts/test/PredictionMarket.t.sol` | **New** — 32 Foundry tests (incl. fuzz) | Full coverage: creation, prediction, settlement, claims, cancel/refund, deadline, edge cases |
+| `contracts/src/PredictionMarket.sol` | Added `asset`, `targetPrice`, `settledPrice`, `deadline` to Market struct; `cancelMarket()`, `refund()`, `createMarketWithDeadline()`, `createMarketVerified()` (World ID); claim division-by-zero protection | Multi-asset markets, market governance, deadline enforcement, sybil resistance |
+| `contracts/src/interfaces/IWorldID.sol` | **New** — World ID verification interface | Sybil-resistant market creation via ZK proof |
+| `contracts/src/helpers/ByteHasher.sol` | **New** — Field hash utility | World ID external nullifier computation |
+| `contracts/test/PredictionMarket.t.sol` | **New** — 35 Foundry tests (incl. fuzz + World ID) | Full coverage: creation, prediction, settlement, claims, cancel/refund, deadline, World ID, edge cases |
 | `my-workflow/logCallback.ts` | Refactored to use shared settlement logic | Clean architecture, code reuse with Cron trigger |
 | `my-workflow/cronCallback.ts` | **New** — Scheduled market scanner | Auto-settle expired markets without manual intervention |
 | `my-workflow/settlementLogic.ts` | **New** — Dual-source price fetch + threshold + AI + write | DRY principle across triggers with dual-source consensus |
@@ -299,7 +306,8 @@ Suite result: ok. 32 passed; 0 failed; 0 skipped
 
 ## Tech Stack
 
-- **Smart Contract**: Solidity 0.8.24 (Foundry) — 300 lines, 32 tests
+- **Smart Contract**: Solidity 0.8.24 (Foundry) — 340 lines, 35 tests
+- **Sybil Resistance**: World ID on-chain verification (Sepolia WorldIDRouter)
 - **CRE Workflow**: TypeScript (Bun + CRE SDK) — 10 capabilities, 3 triggers
 - **Price Oracles**: CoinGecko + CoinCap (dual-source via Confidential HTTP)
 - **AI**: Google Gemini 2.0 Flash (via Confidential HTTP)
