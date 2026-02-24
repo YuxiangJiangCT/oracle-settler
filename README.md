@@ -192,6 +192,45 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 
 ---
 
+## Tenderly Virtual TestNet
+
+Full contract lifecycle deployed and demonstrated on a Tenderly Virtual TestNet (Sepolia fork):
+
+| Resource | Link |
+|----------|------|
+| **Public RPC** | `https://virtual.sepolia.eu.rpc.tenderly.co/03dfcf31-07ae-4204-879a-8f0c2a9ad16f` |
+| **VTestNet Contract** | `0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5` |
+| **Dashboard** | [Tenderly Explorer](https://dashboard.tenderly.co/ryanJ/project/testnet/oracle-settler-sepolia) |
+
+**What's demonstrated:**
+- Contract deployment with World ID + CRE forwarder constructor args
+- 3 markets created (BTC, ETH, SOL) with bets placed
+- Settlement requests emitting `SettlementRequested` events
+- Unlimited ETH via `tenderly_setBalance` for frictionless testing
+
+```bash
+# Run the demo script
+cd prediction-market && bash scripts/tenderly-demo.sh
+
+# Or interact directly via Public RPC
+cast call --rpc-url https://virtual.sepolia.eu.rpc.tenderly.co/03dfcf31-07ae-4204-879a-8f0c2a9ad16f \
+  0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5 "getNextMarketId()(uint256)"
+```
+
+---
+
+## World ID Sybil Resistance
+
+Market creation supports **World ID** zero-knowledge proof verification to prevent sybil attacks:
+
+- **On-chain**: `createMarketVerified()` verifies ZK proof via WorldIDRouter on Sepolia (`0x469449f251692E0779667583026b5A1E99512157`)
+- **Frontend**: IDKit widget prompts World App verification before creating market
+- **Backward compatible**: Regular `createMarket()` still works for CRE-triggered workflows
+
+Each verified human can only create one market per action (duplicate nullifier = revert).
+
+---
+
 ## CRE Capabilities Used (10)
 
 | # | Capability | Purpose |
