@@ -10,16 +10,20 @@ contract PredictionMarket is ReceiverTemplate {
     error MarketDoesNotExist();
     error MarketAlreadySettled();
     error MarketNotSettled();
+    error MarketExpired();
+    error MarketNotCancelled();
+    error Unauthorized();
     error AlreadyPredicted();
     error InvalidAmount();
     error NothingToClaim();
     error AlreadyClaimed();
     error TransferFailed();
 
-    event MarketCreated(uint256 indexed marketId, string question, string asset, uint256 targetPrice, address creator);
+    event MarketCreated(uint256 indexed marketId, string question, string asset, uint256 targetPrice, uint48 deadline, address creator);
     event PredictionMade(uint256 indexed marketId, address indexed predictor, Prediction prediction, uint256 amount);
     event SettlementRequested(uint256 indexed marketId, string question);
     event MarketSettled(uint256 indexed marketId, Prediction outcome, uint16 confidence, uint256 settledPrice);
+    event MarketCancelled(uint256 indexed marketId, address indexed cancelledBy);
     event WinningsClaimed(uint256 indexed marketId, address indexed claimer, uint256 amount);
 
     enum Prediction {
@@ -31,6 +35,7 @@ contract PredictionMarket is ReceiverTemplate {
         address creator;
         uint48 createdAt;
         uint48 settledAt;
+        uint48 deadline;
         bool settled;
         uint16 confidence;
         Prediction outcome;
@@ -48,6 +53,8 @@ contract PredictionMarket is ReceiverTemplate {
         bool claimed;
     }
 
+    uint48 public constant DEFAULT_DEADLINE_DURATION = 7 days;
+
     uint256 internal nextMarketId;
     mapping(uint256 marketId => Market market) internal markets;
     mapping(uint256 marketId => mapping(address user => UserPrediction)) internal predictions;
@@ -61,15 +68,26 @@ contract PredictionMarket is ReceiverTemplate {
     // │                       Create market                          │
     // ================================================================
 
-    /// @notice Create a new prediction market with a price target.
-    /// @param question The question for the market.
-    /// @param asset The CoinGecko asset ID (e.g., "bitcoin", "ethereum").
-    /// @param targetPrice The target price in USD with 6 decimals.
-    /// @return marketId The ID of the newly created market.
+    /// @notice Create a new prediction market with default 7-day deadline.
     function createMarket(
         string memory question,
         string memory asset,
         uint256 targetPrice
+    ) public returns (uint256 marketId) {
+        return createMarketWithDeadline(question, asset, targetPrice, uint48(block.timestamp) + DEFAULT_DEADLINE_DURATION);
+    }
+
+    /// @notice Create a new prediction market with a custom deadline.
+    /// @param question The question for the market.
+    /// @param asset The CoinGecko asset ID (e.g., "bitcoin", "ethereum").
+    /// @param targetPrice The target price in USD with 6 decimals.
+    /// @param deadline The timestamp after which predictions are closed.
+    /// @return marketId The ID of the newly created market.
+    function createMarketWithDeadline(
+        string memory question,
+        string memory asset,
+        uint256 targetPrice,
+        uint48 deadline
     ) public returns (uint256 marketId) {
         marketId = nextMarketId++;
 
@@ -77,6 +95,7 @@ contract PredictionMarket is ReceiverTemplate {
             creator: msg.sender,
             createdAt: uint48(block.timestamp),
             settledAt: 0,
+            deadline: deadline,
             settled: false,
             confidence: 0,
             outcome: Prediction.Yes,
@@ -88,7 +107,7 @@ contract PredictionMarket is ReceiverTemplate {
             settledPrice: 0
         });
 
-        emit MarketCreated(marketId, question, asset, targetPrice, msg.sender);
+        emit MarketCreated(marketId, question, asset, targetPrice, deadline, msg.sender);
     }
 
     // ================================================================
@@ -103,6 +122,7 @@ contract PredictionMarket is ReceiverTemplate {
 
         if (m.creator == address(0)) revert MarketDoesNotExist();
         if (m.settled) revert MarketAlreadySettled();
+        if (m.deadline != 0 && block.timestamp >= m.deadline) revert MarketExpired();
         if (msg.value == 0) revert InvalidAmount();
 
         UserPrediction memory userPred = predictions[marketId][msg.sender];
@@ -187,6 +207,47 @@ contract PredictionMarket is ReceiverTemplate {
     }
 
     // ================================================================
+    // │                      Cancel market                           │
+    // ================================================================
+
+    /// @notice Cancel an unsettled market. Only the creator can cancel.
+    /// @param marketId The ID of the market to cancel.
+    function cancelMarket(uint256 marketId) external {
+        Market memory m = markets[marketId];
+
+        if (m.creator == address(0)) revert MarketDoesNotExist();
+        if (m.settled) revert MarketAlreadySettled();
+        if (msg.sender != m.creator) revert Unauthorized();
+
+        markets[marketId].settled = true;
+        markets[marketId].confidence = 0; // 0 confidence = cancelled
+        markets[marketId].settledAt = uint48(block.timestamp);
+
+        emit MarketCancelled(marketId, msg.sender);
+    }
+
+    /// @notice Refund original bet amount from a cancelled market.
+    /// @param marketId The ID of the cancelled market.
+    function refund(uint256 marketId) external {
+        Market memory m = markets[marketId];
+
+        if (m.creator == address(0)) revert MarketDoesNotExist();
+        if (!m.settled || m.confidence != 0) revert MarketNotCancelled();
+
+        UserPrediction memory userPred = predictions[marketId][msg.sender];
+
+        if (userPred.amount == 0) revert NothingToClaim();
+        if (userPred.claimed) revert AlreadyClaimed();
+
+        predictions[marketId][msg.sender].claimed = true;
+
+        (bool success,) = msg.sender.call{value: userPred.amount}("");
+        if (!success) revert TransferFailed();
+
+        emit WinningsClaimed(marketId, msg.sender, userPred.amount);
+    }
+
+    // ================================================================
     // │                      Claim winnings                          │
     // ================================================================
 
@@ -197,6 +258,7 @@ contract PredictionMarket is ReceiverTemplate {
 
         if (m.creator == address(0)) revert MarketDoesNotExist();
         if (!m.settled) revert MarketNotSettled();
+        if (m.confidence == 0) revert MarketNotCancelled(); // cancelled markets use refund()
 
         UserPrediction memory userPred = predictions[marketId][msg.sender];
 
@@ -208,6 +270,7 @@ contract PredictionMarket is ReceiverTemplate {
 
         uint256 totalPool = m.totalYesPool + m.totalNoPool;
         uint256 winningPool = m.outcome == Prediction.Yes ? m.totalYesPool : m.totalNoPool;
+        if (winningPool == 0) revert NothingToClaim();
         uint256 payout = (userPred.amount * totalPool) / winningPool;
 
         (bool success,) = msg.sender.call{value: payout}("");

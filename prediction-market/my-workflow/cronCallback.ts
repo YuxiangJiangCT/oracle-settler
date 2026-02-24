@@ -22,7 +22,7 @@ import {
   settleMarket,
 } from "./settlementLogic";
 
-// Market expiry: 24 hours after creation
+// Fallback expiry: 24 hours after creation (used if deadline == 0)
 const MARKET_EXPIRY_SECONDS = 24 * 60 * 60;
 
 /**
@@ -119,8 +119,8 @@ export function onCronTrigger(runtime: Runtime<Config>, _payload: CronPayload): 
         continue;
       }
 
-      // Check if market has expired
-      const expiryTime = market.createdAt + MARKET_EXPIRY_SECONDS;
+      // Check if market has expired (use on-chain deadline, fallback to createdAt + 24h)
+      const expiryTime = market.deadline > 0 ? market.deadline : market.createdAt + MARKET_EXPIRY_SECONDS;
       const isExpired = currentTime >= expiryTime;
 
       if (!isExpired) {

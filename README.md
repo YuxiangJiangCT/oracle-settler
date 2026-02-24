@@ -63,6 +63,9 @@ stateDiagram-v2
     [*] --> Created: createMarket()
     Created --> Predicted: predict(YES/NO)
     Predicted --> Predicted: More predictions
+    Created --> Cancelled: cancelMarket() (creator only)
+    Predicted --> Cancelled: cancelMarket() (creator only)
+    Cancelled --> Refunded: refund() by bettors
     Predicted --> SettlementRequested: requestSettlement()
     SettlementRequested --> Settling: CRE Log Trigger
     Created --> Settling: CRE Cron (6h auto-scan)
@@ -132,7 +135,7 @@ Or use the Makefile:
 ```bash
 make install   # Install all dependencies
 make build     # Build contracts + frontend
-make test      # Run all tests (22 passing)
+make test      # Run all tests (32 passing)
 make dev       # Start frontend dev server
 ```
 
@@ -152,7 +155,7 @@ Update `my-workflow/config.staging.json` with the deployed contract address.
 ### Create Markets & Settle
 
 ```bash
-CONTRACT=0x204173d93b41D76c467D6A75856Ba03A3412B10d
+CONTRACT=0xA1378FDb0B94CFAAF1746C0c927693A249FC71a3
 RPC=https://ethereum-sepolia-rpc.publicnode.com
 
 # Create a BTC market
@@ -181,11 +184,11 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 
 | Market | Asset | Question | Target | Actual Price | Outcome | Confidence |
 |--------|-------|----------|--------|-------------|---------|-----------|
-| #0 | BTC | Will BTC be above $50,000? | $50,000 | $65,389 | YES | 100% |
-| #1 | ETH | Will ETH be above $10,000? | $10,000 | $1,883 | NO | 100% |
-| #2 | SOL | Will SOL be above $100? | $100 | $79 | NO | 100% |
+| #0 | BTC | Will BTC be above $100,000? | $100,000 | $63,891 | NO | 75% |
+| #1 | ETH | Will ETH be above $5,000? | $5,000 | $1,853 | NO | 75% |
+| #2 | SOL | Will SOL be above $200? | $200 | $79 | NO | 75% |
 
-**Contract (Sepolia)**: [`0x204173d93b41D76c467D6A75856Ba03A3412B10d`](https://sepolia.etherscan.io/address/0x204173d93b41D76c467D6A75856Ba03A3412B10d)
+**Contract (Sepolia)**: [`0xA1378FDb0B94CFAAF1746C0c927693A249FC71a3`](https://sepolia.etherscan.io/address/0xA1378FDb0B94CFAAF1746C0c927693A249FC71a3)
 
 ---
 
@@ -208,35 +211,56 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 
 ## Testing
 
-22 tests covering all contract functions, edge cases, and CRE integration:
+32 tests covering all contract functions, edge cases, cancel/refund, deadline enforcement, and fuzz testing:
 
 ```
 $ forge test -vvv
 
+# Market Creation (5)
 [PASS] test_createMarket_succeeds
 [PASS] test_createMarket_incrementsId
 [PASS] test_createMarket_emitsEvent
 [PASS] test_createMarket_viaCRE
+[PASS] test_createMarketWithDeadline
+
+# Predictions (8)
 [PASS] test_predict_yes
 [PASS] test_predict_no
 [PASS] test_predict_revertsIfMarketNotExist
 [PASS] test_predict_revertsIfSettled
 [PASS] test_predict_revertsIfZeroValue
 [PASS] test_predict_revertsIfAlreadyPredicted
+[PASS] test_predict_revertsAfterDeadline
+[PASS] test_predict_succeedsBeforeDeadline
+
+# Settlement (4)
 [PASS] test_requestSettlement_emitsEvent
+[PASS] test_requestSettlement_revertsIfNotExist
 [PASS] test_settleMarket_viaCRE
 [PASS] test_settle_revertsIfAlreadySettled
 [PASS] test_settle_revertsIfNotExist
+[PASS] test_settle_setsAllFields
+
+# Claims (6)
 [PASS] test_claim_winnerGetsFullPool
 [PASS] test_claim_proportionalPayout
 [PASS] test_claim_revertsIfNotSettled
 [PASS] test_claim_revertsIfAlreadyClaimed
 [PASS] test_claim_revertsIfLoser
-[PASS] test_settle_setsAllFields
-[PASS] test_onReport_rejectsUnauthorizedCaller
-[PASS] test_requestSettlement_revertsIfNotExist
+[PASS] test_claim_revertsOnCancelledMarket
 
-Suite result: ok. 22 passed; 0 failed; 0 skipped
+# Cancel & Refund (4)
+[PASS] test_cancelMarket_succeeds
+[PASS] test_cancelMarket_revertsIfNotCreator
+[PASS] test_cancelMarket_revertsIfSettled
+[PASS] test_refund_afterCancel
+
+# Edge Cases & Fuzz (3)
+[PASS] test_onReport_rejectsUnauthorizedCaller
+[PASS] test_multipleMarkets_isolation
+[PASS] testFuzz_claim_proportionalPayout (256 runs)
+
+Suite result: ok. 32 passed; 0 failed; 0 skipped
 ```
 
 ---
@@ -245,8 +269,8 @@ Suite result: ok. 22 passed; 0 failed; 0 skipped
 
 | File | Changes | Why |
 |------|---------|-----|
-| `contracts/src/PredictionMarket.sol` | Added `asset`, `targetPrice`, `settledPrice` to Market struct; added `getNextMarketId()` | Support multi-asset markets with on-chain price verification |
-| `contracts/test/PredictionMarket.t.sol` | **New** — 22 Foundry tests | Full coverage: creation, prediction, settlement, claims, edge cases |
+| `contracts/src/PredictionMarket.sol` | Added `asset`, `targetPrice`, `settledPrice`, `deadline` to Market struct; added `cancelMarket()`, `refund()`, `createMarketWithDeadline()`; claim division-by-zero protection | Support multi-asset markets with on-chain price verification, market governance, and deadline enforcement |
+| `contracts/test/PredictionMarket.t.sol` | **New** — 32 Foundry tests (incl. fuzz) | Full coverage: creation, prediction, settlement, claims, cancel/refund, deadline, edge cases |
 | `my-workflow/logCallback.ts` | Refactored to use shared settlement logic | Clean architecture, code reuse with Cron trigger |
 | `my-workflow/cronCallback.ts` | **New** — Scheduled market scanner | Auto-settle expired markets without manual intervention |
 | `my-workflow/settlementLogic.ts` | **New** — Dual-source price fetch + threshold + AI + write | DRY principle across triggers with dual-source consensus |
@@ -275,7 +299,7 @@ Suite result: ok. 22 passed; 0 failed; 0 skipped
 
 ## Tech Stack
 
-- **Smart Contract**: Solidity 0.8.24 (Foundry) — 240 lines, 22 tests
+- **Smart Contract**: Solidity 0.8.24 (Foundry) — 300 lines, 32 tests
 - **CRE Workflow**: TypeScript (Bun + CRE SDK) — 10 capabilities, 3 triggers
 - **Price Oracles**: CoinGecko + CoinCap (dual-source via Confidential HTTP)
 - **AI**: Google Gemini 2.0 Flash (via Confidential HTTP)

@@ -11,14 +11,10 @@ contract PredictionMarketTest is Test {
     address bob = makeAddr("bob");
     address charlie = makeAddr("charlie");
 
-    // Deploy with address(this) as forwarder so we can call onReport directly
     function setUp() public {
         market = new PredictionMarket(address(this));
-
-        // Set this test contract as the forwarder so onReport calls succeed
         market.setForwarderAddress(address(this));
 
-        // Fund test users
         vm.deal(alice, 10 ether);
         vm.deal(bob, 10 ether);
         vm.deal(charlie, 10 ether);
@@ -32,13 +28,16 @@ contract PredictionMarketTest is Test {
         return market.createMarket("Will BTC be above $50,000?", "bitcoin", 50000e6);
     }
 
+    function _createMarketWithDeadline(uint48 deadline) internal returns (uint256) {
+        return market.createMarketWithDeadline("Will BTC be above $50,000?", "bitcoin", 50000e6, deadline);
+    }
+
     function _buildSettlementReport(
         uint256 marketId,
         uint8 outcome,
         uint16 confidence,
         uint256 settledPrice
     ) internal pure returns (bytes memory) {
-        // Prefix 0x01 + abi.encode(marketId, outcome, confidence, settledPrice)
         return abi.encodePacked(
             bytes1(0x01),
             abi.encode(marketId, outcome, confidence, settledPrice)
@@ -47,12 +46,11 @@ contract PredictionMarketTest is Test {
 
     function _settleViaReport(uint256 marketId, uint8 outcome, uint16 confidence, uint256 settledPrice) internal {
         bytes memory report = _buildSettlementReport(marketId, outcome, confidence, settledPrice);
-        bytes memory metadata = "";
-        market.onReport(metadata, report);
+        market.onReport("", report);
     }
 
     // ================================================================
-    //  MARKET CREATION (4 tests)
+    //  MARKET CREATION (5 tests)
     // ================================================================
 
     function test_createMarket_succeeds() public {
@@ -67,6 +65,7 @@ contract PredictionMarketTest is Test {
         assertFalse(m.settled);
         assertEq(m.totalYesPool, 0);
         assertEq(m.totalNoPool, 0);
+        assertEq(m.deadline, uint48(block.timestamp) + 7 days);
     }
 
     function test_createMarket_incrementsId() public {
@@ -79,17 +78,16 @@ contract PredictionMarketTest is Test {
     }
 
     function test_createMarket_emitsEvent() public {
+        uint48 expectedDeadline = uint48(block.timestamp) + 7 days;
         vm.expectEmit(true, false, false, true);
-        emit PredictionMarket.MarketCreated(0, "Will BTC moon?", "bitcoin", 100000e6, address(this));
+        emit PredictionMarket.MarketCreated(0, "Will BTC moon?", "bitcoin", 100000e6, expectedDeadline, address(this));
 
         market.createMarket("Will BTC moon?", "bitcoin", 100000e6);
     }
 
     function test_createMarket_viaCRE() public {
-        // Create market via onReport with no prefix → routes to createMarket
         bytes memory report = abi.encode("Will SOL hit $200?", "solana", uint256(200e6));
-        bytes memory metadata = "";
-        market.onReport(metadata, report);
+        market.onReport("", report);
 
         PredictionMarket.Market memory m = market.getMarket(0);
         assertEq(m.question, "Will SOL hit $200?");
@@ -97,8 +95,16 @@ contract PredictionMarketTest is Test {
         assertEq(m.targetPrice, 200e6);
     }
 
+    function test_createMarketWithDeadline() public {
+        uint48 customDeadline = uint48(block.timestamp) + 30 days;
+        uint256 id = market.createMarketWithDeadline("Custom?", "bitcoin", 50000e6, customDeadline);
+
+        PredictionMarket.Market memory m = market.getMarket(id);
+        assertEq(m.deadline, customDeadline);
+    }
+
     // ================================================================
-    //  PREDICTIONS (6 tests)
+    //  PREDICTIONS (8 tests)
     // ================================================================
 
     function test_predict_yes() public {
@@ -136,14 +142,11 @@ contract PredictionMarketTest is Test {
     function test_predict_revertsIfSettled() public {
         _createDefaultMarket();
 
-        // Add a bet so the market has a pool
         vm.prank(alice);
         market.predict{value: 1 ether}(0, PredictionMarket.Prediction.Yes);
 
-        // Settle it
-        _settleViaReport(0, 0, 100, 65000e6); // Yes wins
+        _settleViaReport(0, 0, 100, 65000e6);
 
-        // Try to predict after settlement
         vm.prank(bob);
         vm.expectRevert(PredictionMarket.MarketAlreadySettled.selector);
         market.predict{value: 1 ether}(0, PredictionMarket.Prediction.No);
@@ -168,6 +171,30 @@ contract PredictionMarketTest is Test {
         market.predict{value: 1 ether}(0, PredictionMarket.Prediction.No);
     }
 
+    function test_predict_revertsAfterDeadline() public {
+        uint48 deadline = uint48(block.timestamp) + 1 days;
+        _createMarketWithDeadline(deadline);
+
+        vm.warp(deadline + 1);
+
+        vm.prank(alice);
+        vm.expectRevert(PredictionMarket.MarketExpired.selector);
+        market.predict{value: 1 ether}(0, PredictionMarket.Prediction.Yes);
+    }
+
+    function test_predict_succeedsBeforeDeadline() public {
+        uint48 deadline = uint48(block.timestamp) + 1 days;
+        _createMarketWithDeadline(deadline);
+
+        vm.warp(deadline - 1);
+
+        vm.prank(alice);
+        market.predict{value: 1 ether}(0, PredictionMarket.Prediction.Yes);
+
+        PredictionMarket.Market memory m = market.getMarket(0);
+        assertEq(m.totalYesPool, 1 ether);
+    }
+
     // ================================================================
     //  SETTLEMENT (4 tests)
     // ================================================================
@@ -184,12 +211,12 @@ contract PredictionMarketTest is Test {
     function test_settleMarket_viaCRE() public {
         _createDefaultMarket();
 
-        _settleViaReport(0, 0, 95, 65000e6); // outcome=Yes, confidence=95%
+        _settleViaReport(0, 0, 95, 65000e6);
 
         PredictionMarket.Market memory m = market.getMarket(0);
         assertTrue(m.settled);
         assertEq(m.confidence, 95);
-        assertEq(uint8(m.outcome), 0); // Yes
+        assertEq(uint8(m.outcome), 0);
         assertEq(m.settledPrice, 65000e6);
         assertGt(m.settledAt, 0);
     }
@@ -198,7 +225,6 @@ contract PredictionMarketTest is Test {
         _createDefaultMarket();
         _settleViaReport(0, 0, 100, 65000e6);
 
-        // Try to settle again
         bytes memory report = _buildSettlementReport(0, 1, 100, 40000e6);
         vm.expectRevert(PredictionMarket.MarketAlreadySettled.selector);
         market.onReport("", report);
@@ -211,34 +237,28 @@ contract PredictionMarketTest is Test {
     }
 
     // ================================================================
-    //  CLAIMS (5 tests)
+    //  CLAIMS (6 tests)
     // ================================================================
 
     function test_claim_winnerGetsFullPool() public {
         _createDefaultMarket();
 
-        // Alice bets YES 1 ETH, Bob bets NO 2 ETH
         vm.prank(alice);
         market.predict{value: 1 ether}(0, PredictionMarket.Prediction.Yes);
         vm.prank(bob);
         market.predict{value: 2 ether}(0, PredictionMarket.Prediction.No);
 
-        // Settle: YES wins
         _settleViaReport(0, 0, 100, 65000e6);
 
-        // Alice is the only YES bettor — she gets the entire pool (3 ETH)
         uint256 balBefore = alice.balance;
         vm.prank(alice);
         market.claim(0);
-        uint256 balAfter = alice.balance;
-
-        assertEq(balAfter - balBefore, 3 ether);
+        assertEq(alice.balance - balBefore, 3 ether);
     }
 
     function test_claim_proportionalPayout() public {
         _createDefaultMarket();
 
-        // Alice bets YES 1 ETH, Charlie bets YES 2 ETH, Bob bets NO 3 ETH
         vm.prank(alice);
         market.predict{value: 1 ether}(0, PredictionMarket.Prediction.Yes);
         vm.prank(charlie);
@@ -246,16 +266,13 @@ contract PredictionMarketTest is Test {
         vm.prank(bob);
         market.predict{value: 3 ether}(0, PredictionMarket.Prediction.No);
 
-        // Settle: YES wins, total pool = 6 ETH, YES pool = 3 ETH
         _settleViaReport(0, 0, 100, 65000e6);
 
-        // Alice: 1/3 * 6 = 2 ETH
         uint256 aliceBefore = alice.balance;
         vm.prank(alice);
         market.claim(0);
         assertEq(alice.balance - aliceBefore, 2 ether);
 
-        // Charlie: 2/3 * 6 = 4 ETH
         uint256 charlieBefore = charlie.balance;
         vm.prank(charlie);
         market.claim(0);
@@ -297,38 +314,101 @@ contract PredictionMarketTest is Test {
         vm.prank(bob);
         market.predict{value: 1 ether}(0, PredictionMarket.Prediction.No);
 
-        // Settle: NO wins
         _settleViaReport(0, 1, 100, 40000e6);
 
-        // Alice bet YES but NO won
         vm.prank(alice);
         vm.expectRevert(PredictionMarket.NothingToClaim.selector);
         market.claim(0);
     }
 
+    function test_claim_revertsOnCancelledMarket() public {
+        _createDefaultMarket();
+
+        vm.prank(alice);
+        market.predict{value: 1 ether}(0, PredictionMarket.Prediction.Yes);
+
+        market.cancelMarket(0);
+
+        vm.prank(alice);
+        vm.expectRevert(PredictionMarket.MarketNotCancelled.selector);
+        market.claim(0);
+    }
+
     // ================================================================
-    //  EDGE CASES (3 tests)
+    //  CANCEL + REFUND (4 tests)
+    // ================================================================
+
+    function test_cancelMarket_succeeds() public {
+        _createDefaultMarket();
+
+        vm.prank(alice);
+        market.predict{value: 1 ether}(0, PredictionMarket.Prediction.Yes);
+
+        market.cancelMarket(0);
+
+        PredictionMarket.Market memory m = market.getMarket(0);
+        assertTrue(m.settled);
+        assertEq(m.confidence, 0);
+    }
+
+    function test_cancelMarket_revertsIfNotCreator() public {
+        _createDefaultMarket();
+
+        vm.prank(alice);
+        vm.expectRevert(PredictionMarket.Unauthorized.selector);
+        market.cancelMarket(0);
+    }
+
+    function test_cancelMarket_revertsIfSettled() public {
+        _createDefaultMarket();
+        _settleViaReport(0, 0, 100, 65000e6);
+
+        vm.expectRevert(PredictionMarket.MarketAlreadySettled.selector);
+        market.cancelMarket(0);
+    }
+
+    function test_refund_afterCancel() public {
+        _createDefaultMarket();
+
+        vm.prank(alice);
+        market.predict{value: 1 ether}(0, PredictionMarket.Prediction.Yes);
+        vm.prank(bob);
+        market.predict{value: 2 ether}(0, PredictionMarket.Prediction.No);
+
+        market.cancelMarket(0);
+
+        uint256 aliceBefore = alice.balance;
+        vm.prank(alice);
+        market.refund(0);
+        assertEq(alice.balance - aliceBefore, 1 ether);
+
+        uint256 bobBefore = bob.balance;
+        vm.prank(bob);
+        market.refund(0);
+        assertEq(bob.balance - bobBefore, 2 ether);
+    }
+
+    // ================================================================
+    //  EDGE CASES (4 tests)
     // ================================================================
 
     function test_settle_setsAllFields() public {
         _createDefaultMarket();
-        _settleViaReport(0, 1, 87, 48500e6); // No wins, 87% confidence, price=$48,500
+        _settleViaReport(0, 1, 87, 48500e6);
 
         PredictionMarket.Market memory m = market.getMarket(0);
         assertTrue(m.settled);
         assertEq(m.confidence, 87);
-        assertEq(uint8(m.outcome), 1); // No
+        assertEq(uint8(m.outcome), 1);
         assertEq(m.settledPrice, 48500e6);
         assertEq(m.settledAt, block.timestamp);
     }
 
     function test_onReport_rejectsUnauthorizedCaller() public {
-        // Set forwarder to a specific address (not alice)
         market.setForwarderAddress(address(0xBEEF));
 
         bytes memory report = abi.encode("Q?", "bitcoin", uint256(50000e6));
 
-        // Alice tries to call onReport — should fail
         vm.prank(alice);
         vm.expectRevert();
         market.onReport("", report);
@@ -337,5 +417,54 @@ contract PredictionMarketTest is Test {
     function test_requestSettlement_revertsIfNotExist() public {
         vm.expectRevert(PredictionMarket.MarketDoesNotExist.selector);
         market.requestSettlement(999);
+    }
+
+    function test_multipleMarkets_isolation() public {
+        uint256 id0 = market.createMarket("Q1", "bitcoin", 50000e6);
+        uint256 id1 = market.createMarket("Q2", "ethereum", 10000e6);
+
+        vm.prank(alice);
+        market.predict{value: 1 ether}(id0, PredictionMarket.Prediction.Yes);
+        vm.prank(bob);
+        market.predict{value: 2 ether}(id1, PredictionMarket.Prediction.No);
+
+        _settleViaReport(id0, 0, 100, 65000e6);
+
+        PredictionMarket.Market memory m0 = market.getMarket(id0);
+        PredictionMarket.Market memory m1 = market.getMarket(id1);
+
+        assertTrue(m0.settled);
+        assertFalse(m1.settled);
+        assertEq(m0.totalYesPool, 1 ether);
+        assertEq(m1.totalNoPool, 2 ether);
+    }
+
+    // ================================================================
+    //  FUZZ TESTS (1 test)
+    // ================================================================
+
+    function testFuzz_claim_proportionalPayout(uint96 aliceBet, uint96 bobBet) public {
+        vm.assume(aliceBet > 0.001 ether && aliceBet < 100 ether);
+        vm.assume(bobBet > 0.001 ether && bobBet < 100 ether);
+
+        vm.deal(alice, uint256(aliceBet) + 1 ether);
+        vm.deal(bob, uint256(bobBet) + 1 ether);
+
+        _createDefaultMarket();
+
+        vm.prank(alice);
+        market.predict{value: aliceBet}(0, PredictionMarket.Prediction.Yes);
+        vm.prank(bob);
+        market.predict{value: bobBet}(0, PredictionMarket.Prediction.No);
+
+        _settleViaReport(0, 0, 100, 65000e6);
+
+        uint256 totalPool = uint256(aliceBet) + uint256(bobBet);
+
+        uint256 balBefore = alice.balance;
+        vm.prank(alice);
+        market.claim(0);
+        // Alice is only YES bettor so she gets the entire pool
+        assertEq(alice.balance - balBefore, totalPool);
     }
 }

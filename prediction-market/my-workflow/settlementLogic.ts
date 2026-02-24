@@ -40,6 +40,7 @@ export interface Market {
   creator: string;
   createdAt: number;       // uint48 → number in viem
   settledAt: number;       // uint48 → number in viem
+  deadline: number;        // uint48 → number in viem
   settled: boolean;
   confidence: number;
   outcome: number; // 0 = Yes, 1 = No
@@ -78,6 +79,7 @@ export const GET_MARKET_ABI = [
           { name: "creator", type: "address" },
           { name: "createdAt", type: "uint48" },
           { name: "settledAt", type: "uint48" },
+          { name: "deadline", type: "uint48" },
           { name: "settled", type: "bool" },
           { name: "confidence", type: "uint16" },
           { name: "outcome", type: "uint8" },

@@ -6,7 +6,7 @@ CONTRACTS  := $(PM_DIR)/contracts
 FRONTEND   := $(PM_DIR)/frontend
 WORKFLOW   := $(PM_DIR)/my-workflow
 RPC        := https://ethereum-sepolia-rpc.publicnode.com
-CONTRACT   := 0x204173d93b41D76c467D6A75856Ba03A3412B10d
+CONTRACT   := 0xA1378FDb0B94CFAAF1746C0c927693A249FC71a3
 
 # ── Install ─────────────────────────────────────────────
 install:
