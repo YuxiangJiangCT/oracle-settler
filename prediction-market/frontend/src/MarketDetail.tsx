@@ -22,13 +22,6 @@ function formatPrice(price: bigint): string {
   return `$${num.toLocaleString()}`;
 }
 
-function formatPriceRaw(price: bigint): string {
-  const num = Number(price);
-  if (num >= 1_000_000_000) return `$${(num / 1_000_000).toFixed(0)}M`;
-  if (num >= 1_000) return `$${num.toLocaleString()}`;
-  return `$${num}`;
-}
-
 export function MarketDetail({ market, marketId, provider, account, onBack, onUpdate }: MarketDetailProps) {
   const totalPool = market.totalYesPool + market.totalNoPool;
   const isActive = !market.settled;
@@ -52,7 +45,7 @@ export function MarketDetail({ market, marketId, provider, account, onBack, onUp
 
         <div className="detail-tags">
           <span className="asset-tag">{market.asset}</span>
-          <span className="price-tag">Target: {formatPriceRaw(market.targetPrice)}</span>
+          <span className="price-tag">Target: {formatPrice(market.targetPrice)}</span>
           {market.settled && market.settledPrice > 0n && (
             <span className="price-tag settled-price">
               Settled: {formatPrice(market.settledPrice)}

@@ -251,6 +251,12 @@ export function determineOutcome(
     runtime.log(`  AI: ${parsed.result} (${confidence / 100}% confidence)`);
   }
 
+  // Single-source mode: cap confidence when CoinCap unavailable
+  if (coinCapPrice === null) {
+    confidence = Math.min(confidence, 7500);
+    runtime.log(`  Single-source mode: confidence capped at ${confidence / 100}%`);
+  }
+
   return { outcomeValue, confidence, settledPrice6Dec, currentPriceUsd };
 }
 
