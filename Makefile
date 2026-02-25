@@ -6,7 +6,7 @@ CONTRACTS  := $(PM_DIR)/contracts
 FRONTEND   := $(PM_DIR)/frontend
 WORKFLOW   := $(PM_DIR)/my-workflow
 RPC        := https://ethereum-sepolia-rpc.publicnode.com
-CONTRACT   := 0x77C8FbA1CB7816b546f54C2C33EeDf50434769Da
+CONTRACT   := 0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5
 
 # ── Install ─────────────────────────────────────────────
 install:
@@ -40,7 +40,10 @@ deploy:
 		--rpc-url $(RPC) \
 		--private-key $(PK) \
 		src/PredictionMarket.sol:PredictionMarket \
-		--constructor-args 0x15fc6ae953e024d975e77382eeec56a9101f9f88
+		--constructor-args 0x15fc6ae953e024d975e77382eeec56a9101f9f88 \
+			0x0000000000000000000000000000000000000000 \
+			"app_e5fb2e27e8b9d3c7ea376b845676f05a" \
+			"create-market"
 
 # ── Demo Commands ───────────────────────────────────────
 demo-create:

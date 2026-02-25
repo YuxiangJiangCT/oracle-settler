@@ -155,7 +155,7 @@ Update `my-workflow/config.staging.json` with the deployed contract address.
 ### Create Markets & Settle
 
 ```bash
-CONTRACT=0x77C8FbA1CB7816b546f54C2C33EeDf50434769Da
+CONTRACT=0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5
 RPC=https://ethereum-sepolia-rpc.publicnode.com
 
 # Create a BTC market
@@ -188,7 +188,7 @@ Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap pric
 | #1 | ETH | Will ETH be above $5,000? | $5,000 | $1,858 | NO | 75% |
 | #2 | SOL | Will SOL be above $200? | $200 | $79 | NO | 75% |
 
-**Contract (Sepolia)**: [`0x77C8FbA1CB7816b546f54C2C33EeDf50434769Da`](https://sepolia.etherscan.io/address/0x77C8FbA1CB7816b546f54C2C33EeDf50434769Da)
+**Contract (Sepolia)**: [`0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5`](https://sepolia.etherscan.io/address/0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5)
 
 ---
 

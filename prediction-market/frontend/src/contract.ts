@@ -9,7 +9,7 @@ export const SEPOLIA = {
   currency: { name: "Sepolia ETH", symbol: "ETH", decimals: 18 },
 };
 
-export const CONTRACT_ADDRESS = "0x77C8FbA1CB7816b546f54C2C33EeDf50434769Da";
+export const CONTRACT_ADDRESS = "0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5";
 
 export const PREDICTION_MARKET_ABI = [
   // Read
