@@ -24,6 +24,19 @@ import { askGemini } from "./gemini";
 import { buildCoinCapRequest } from "./coincapPrice";
 
 // ===========================
+// Known price tokens (CoinGecko IDs) — anything else = event market
+// ===========================
+
+const PRICE_TOKENS = new Set([
+  "bitcoin", "ethereum", "solana", "cardano", "dogecoin",
+  "polkadot", "avalanche-2", "chainlink", "matic", "litecoin",
+]);
+
+function isPriceMarket(market: Market): boolean {
+  return PRICE_TOKENS.has(market.asset) && market.targetPrice > 0n;
+}
+
+// ===========================
 // Shared Types
 // ===========================
 
@@ -263,6 +276,45 @@ export function determineOutcome(
 }
 
 /**
+ * Determines outcome for EVENT markets (non-price) using Gemini AI + Google Search grounding.
+ * No price fetching — pure AI judgment based on real-world news.
+ */
+export function determineEventOutcome(
+  runtime: Runtime<Config>,
+  market: Market,
+  question: string
+): { outcomeValue: number; confidence: number; settledPrice6Dec: bigint; currentPriceUsd: number } {
+  runtime.log(`  [Event Market] Using AI + Google Search to determine outcome...`);
+
+  const geminiResult = askGemini(runtime,
+    `EVENT MARKET QUESTION: ${question}\n\n` +
+    `This is a real-world event prediction (NOT a price prediction). ` +
+    `Search for the latest news and determine if this event has occurred or is confirmed to occur. ` +
+    `If the event clearly happened → YES. If it clearly did not happen → NO. ` +
+    `If the event has a deadline, check if the deadline has passed. ` +
+    `If the deadline hasn't passed and the event hasn't happened yet, respond NO with low confidence (under 5000). ` +
+    `If there is not enough information yet, respond NO with low confidence.`
+  );
+
+  const jsonMatch = geminiResult.geminiResponse.match(/\{[\s\S]*"result"[\s\S]*"confidence"[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error(`Could not parse AI response for event market: ${geminiResult.geminiResponse}`);
+  }
+  const parsed = JSON.parse(jsonMatch[0]) as GeminiResult;
+
+  if (!["YES", "NO"].includes(parsed.result)) {
+    throw new Error(`Cannot settle event market: AI returned ${parsed.result}`);
+  }
+
+  const outcomeValue = parsed.result === "YES" ? 0 : 1;
+  const confidence = Math.min(Math.max(parsed.confidence, 0), 10000);
+
+  runtime.log(`  [Event Market] AI verdict: ${parsed.result} (${confidence / 100}% confidence)`);
+
+  return { outcomeValue, confidence, settledPrice6Dec: 0n, currentPriceUsd: 0 };
+}
+
+/**
  * Writes settlement report to the contract via CRE signed report.
  */
 export function writeSettlement(
@@ -342,13 +394,22 @@ export function settleMarket(
 
   runtime.log(`  Market #${marketId}: "${market.question}" [${market.asset}]`);
 
-  const { outcomeValue, confidence, settledPrice6Dec, currentPriceUsd } =
-    determineOutcome(runtime, market, market.question);
+  const isPrice = isPriceMarket(market);
+  runtime.log(`  Market type: ${isPrice ? "PRICE" : "EVENT"}`);
+
+  const { outcomeValue, confidence, settledPrice6Dec, currentPriceUsd } = isPrice
+    ? determineOutcome(runtime, market, market.question)
+    : determineEventOutcome(runtime, market, market.question);
 
   const txHash = writeSettlement(runtime, marketId, outcomeValue, confidence, settledPrice6Dec);
-  const targetPriceUsd = Number(market.targetPrice) / 1e6;
 
-  runtime.log(`  Settled: ${outcomeValue === 0 ? "YES" : "NO"} @ $${currentPriceUsd} (target: $${targetPriceUsd}) tx: ${txHash}`);
+  if (isPrice) {
+    const targetPriceUsd = Number(market.targetPrice) / 1e6;
+    runtime.log(`  Settled: ${outcomeValue === 0 ? "YES" : "NO"} @ $${currentPriceUsd} (target: $${targetPriceUsd}) tx: ${txHash}`);
+  } else {
+    runtime.log(`  Settled: ${outcomeValue === 0 ? "YES" : "NO"} (AI confidence: ${confidence / 100}%) tx: ${txHash}`);
+  }
+
   return txHash;
 }
 

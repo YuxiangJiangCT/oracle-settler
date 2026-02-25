@@ -44,7 +44,11 @@ export function MarketCard({ market, marketId, onClick }: MarketCardProps) {
       {/* Asset & Price Info */}
       <div className="card-asset-info">
         <span className="asset-tag">{market.asset}</span>
-        <span className="price-tag">Target: {formatPrice(market.targetPrice)}</span>
+        {market.targetPrice > 0n ? (
+          <span className="price-tag">Target: {formatPrice(market.targetPrice)}</span>
+        ) : (
+          <span className="price-tag event-tag">Event Market</span>
+        )}
         {market.settled && market.settledPrice > 0n && (
           <span className="price-tag settled-price">
             Settled: {formatPrice(market.settledPrice)}

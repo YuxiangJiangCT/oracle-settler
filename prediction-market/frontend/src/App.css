@@ -1430,6 +1430,21 @@ body::before {
   animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+/* ===== EVENT MARKET ===== */
+.event-tag {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  color: white !important;
+}
+.event-preset {
+  border-color: #6366f1 !important;
+  color: #6366f1 !important;
+}
+.event-preset:hover {
+  background: #6366f1 !important;
+  border-color: #6366f1 !important;
+  color: white !important;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 480px) {
   .nav-bar { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }

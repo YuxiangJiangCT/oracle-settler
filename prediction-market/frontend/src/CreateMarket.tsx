@@ -26,6 +26,12 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
     { label: "SOL > $200", question: "Will Solana exceed $200?", asset: "solana", price: "200" },
   ];
 
+  const eventPresets = [
+    { label: "GPT-5 Release", question: "Will GPT-5 be released before July 2026?", asset: "gpt5-release", price: "0" },
+    { label: "Starship Orbit", question: "Will SpaceX Starship reach orbit in 2026?", asset: "starship-orbit", price: "0" },
+    { label: "ETH Pectra", question: "Will Ethereum Pectra upgrade launch in Q1 2026?", asset: "eth-pectra", price: "0" },
+  ];
+
   const isFormValid = question && asset && targetPrice;
 
   const createMarket = async () => {
@@ -102,7 +108,7 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
       <h2 className="section-title">Create Market</h2>
       <p className="create-subtitle">
         Deploy a new prediction market on-chain. CRE will automatically settle it using
-        CoinGecko price data and Gemini AI.
+        CoinGecko price data (price markets) or Gemini AI + Google Search (event markets).
       </p>
 
       {/* Presets */}
@@ -113,6 +119,26 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
             <button
               key={p.label}
               className="preset-btn"
+              onClick={() => {
+                setQuestion(p.question);
+                setAsset(p.asset);
+                setTargetPrice(p.price);
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Event Presets */}
+      <div className="presets">
+        <span className="presets-label">Event presets:</span>
+        <div className="preset-buttons">
+          {eventPresets.map((p) => (
+            <button
+              key={p.label}
+              className="preset-btn event-preset"
               onClick={() => {
                 setQuestion(p.question);
                 setAsset(p.asset);
