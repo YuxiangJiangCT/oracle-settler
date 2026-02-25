@@ -313,6 +313,12 @@ contract PredictionMarket is ReceiverTemplate {
     ///      - Prefix 0x02 → Resolve dispute
     /// @notice Known limitation: CRE-created markets have creator = forwarder address,
     ///         so cancelMarket() is not available for those markets.
+    /// @dev NOTE: msg.sender inside _processReport is the KeystoneForwarder,
+    ///      not the original CRE workflow initiator. Markets created via the
+    ///      0x00 (create) path will have creator = forwarder address. This means
+    ///      cancelMarket() cannot be called by a human for CRE-created markets.
+    ///      Future improvement: accept an explicit creator address in the encoded
+    ///      payload, or allow owner() to cancel any market.
     function _processReport(bytes calldata report) internal override {
         if (report.length > 0 && report[0] == 0x01) {
             _settleMarket(report[1:]);
