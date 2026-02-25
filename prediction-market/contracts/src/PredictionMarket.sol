@@ -258,6 +258,8 @@ contract PredictionMarket is ReceiverTemplate {
     /// @dev Routes to either market creation or settlement based on prefix byte.
     ///      - No prefix → Create market
     ///      - Prefix 0x01 → Settle market
+    /// @notice Known limitation: CRE-created markets have creator = forwarder address,
+    ///         so cancelMarket() is not available for those markets.
     function _processReport(bytes calldata report) internal override {
         if (report.length > 0 && report[0] == 0x01) {
             _settleMarket(report[1:]);

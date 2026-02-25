@@ -445,29 +445,42 @@ contract PredictionMarketTest is Test {
     //  FUZZ TESTS (1 test)
     // ================================================================
 
-    function testFuzz_claim_proportionalPayout(uint96 aliceBet, uint96 bobBet) public {
-        vm.assume(aliceBet > 0.001 ether && aliceBet < 100 ether);
-        vm.assume(bobBet > 0.001 ether && bobBet < 100 ether);
+    function testFuzz_claim_proportionalPayout(uint96 aliceBet, uint96 charlieBet, uint96 bobBet) public {
+        aliceBet = uint96(bound(uint256(aliceBet), 0.001 ether, 100 ether));
+        charlieBet = uint96(bound(uint256(charlieBet), 0.001 ether, 100 ether));
+        bobBet = uint96(bound(uint256(bobBet), 0.001 ether, 100 ether));
 
         vm.deal(alice, uint256(aliceBet) + 1 ether);
+        vm.deal(charlie, uint256(charlieBet) + 1 ether);
         vm.deal(bob, uint256(bobBet) + 1 ether);
 
         _createDefaultMarket();
 
         vm.prank(alice);
         market.predict{value: aliceBet}(0, PredictionMarket.Prediction.Yes);
+        vm.prank(charlie);
+        market.predict{value: charlieBet}(0, PredictionMarket.Prediction.Yes);
         vm.prank(bob);
         market.predict{value: bobBet}(0, PredictionMarket.Prediction.No);
 
-        _settleViaReport(0, 0, 100, 65000e6);
+        _settleViaReport(0, 0, 100, 65000e6); // YES wins
 
-        uint256 totalPool = uint256(aliceBet) + uint256(bobBet);
+        uint256 totalPool = uint256(aliceBet) + uint256(charlieBet) + uint256(bobBet);
+        uint256 winningPool = uint256(aliceBet) + uint256(charlieBet);
 
-        uint256 balBefore = alice.balance;
+        // Alice claims proportional share
+        uint256 aliceBal = alice.balance;
         vm.prank(alice);
         market.claim(0);
-        // Alice is only YES bettor so she gets the entire pool
-        assertEq(alice.balance - balBefore, totalPool);
+        uint256 alicePayout = alice.balance - aliceBal;
+        assertEq(alicePayout, uint256(aliceBet) * totalPool / winningPool);
+
+        // Charlie claims proportional share
+        uint256 charlieBal = charlie.balance;
+        vm.prank(charlie);
+        market.claim(0);
+        uint256 charliePayout = charlie.balance - charlieBal;
+        assertEq(charliePayout, uint256(charlieBet) * totalPool / winningPool);
     }
 
     // ================================================================
