@@ -5,6 +5,7 @@ import { keccak256, toHex } from "viem";
 import { onHttpTrigger } from "./httpCallback";
 import { onLogTrigger } from "./logCallback";
 import { onCronTrigger } from "./cronCallback";
+import { onDisputeTrigger } from "./disputeCallback";
 
 // Config type (matches config.staging.json structure)
 type Config = {
@@ -17,6 +18,7 @@ type Config = {
 };
 
 const SETTLEMENT_REQUESTED_SIGNATURE = "SettlementRequested(uint256,string)";
+const DISPUTE_FILED_SIGNATURE = "DisputeFiled(uint256,address,uint256)";
 
 const initWorkflow = (config: Config) => {
   // Initialize HTTP capability
@@ -36,6 +38,7 @@ const initWorkflow = (config: Config) => {
 
   const evmClient = new cre.capabilities.EVMClient(network.chainSelector.selector);
   const eventHash = keccak256(toHex(SETTLEMENT_REQUESTED_SIGNATURE));
+  const disputeEventHash = keccak256(toHex(DISPUTE_FILED_SIGNATURE));
 
   // Initialize Cron capability for scheduled auto-settlement
   const cronCapability = new cre.capabilities.CronCapability();
@@ -52,6 +55,16 @@ const initWorkflow = (config: Config) => {
         confidence: "CONFIDENCE_LEVEL_FINALIZED",
       }),
       onLogTrigger
+    ),
+
+    // Log Trigger - Dispute Re-verification (on DisputeFiled)
+    cre.handler(
+      evmClient.logTrigger({
+        addresses: [config.evms[0].marketAddress],
+        topics: [{ values: [disputeEventHash] }],
+        confidence: "CONFIDENCE_LEVEL_FINALIZED",
+      }),
+      onDisputeTrigger
     ),
 
     // Cron Trigger - Scheduled Auto-Settlement (every 6 hours)

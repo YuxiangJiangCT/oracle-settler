@@ -32,7 +32,7 @@ const PRICE_TOKENS = new Set([
   "polkadot", "avalanche-2", "chainlink", "matic", "litecoin",
 ]);
 
-function isPriceMarket(market: Market): boolean {
+export function isPriceMarket(market: Market): boolean {
   return PRICE_TOKENS.has(market.asset) && market.targetPrice > 0n;
 }
 
@@ -371,6 +371,66 @@ export function writeSettlement(
   }
 
   throw new Error(`Transaction failed: ${writeResult.txStatus}`);
+}
+
+/**
+ * Writes dispute resolution report to the contract via CRE signed report.
+ * Same as writeSettlement but with 0x02 prefix for _resolveDispute routing.
+ */
+export function writeDisputeResolution(
+  runtime: Runtime<Config>,
+  marketId: bigint,
+  outcomeValue: number,
+  confidence: number,
+  settledPrice6Dec: bigint
+): string {
+  const evmConfig = runtime.config.evms[0];
+  const network = getNetwork({
+    chainFamily: "evm",
+    chainSelectorName: evmConfig.chainSelectorName,
+    isTestnet: true,
+  });
+
+  if (!network) {
+    throw new Error(`Unknown chain: ${evmConfig.chainSelectorName}`);
+  }
+
+  const evmClient = new cre.capabilities.EVMClient(network.chainSelector.selector);
+
+  const settlementData = encodeAbiParameters(SETTLEMENT_PARAMS, [
+    marketId,
+    outcomeValue,
+    confidence,
+    settledPrice6Dec,
+  ]);
+
+  // Prepend 0x02 prefix so contract routes to _resolveDispute
+  const reportData = ("0x02" + settlementData.slice(2)) as `0x${string}`;
+
+  const reportResponse = runtime
+    .report({
+      encodedPayload: hexToBase64(reportData),
+      encoderName: "evm",
+      signingAlgo: "ecdsa",
+      hashingAlgo: "keccak256",
+    })
+    .result();
+
+  const writeResult = evmClient
+    .writeReport(runtime, {
+      receiver: evmConfig.marketAddress,
+      report: reportResponse,
+      gasConfig: {
+        gasLimit: evmConfig.gasLimit,
+      },
+    })
+    .result();
+
+  if (writeResult.txStatus === TxStatus.SUCCESS) {
+    return bytesToHex(writeResult.txHash || new Uint8Array(32));
+  }
+
+  throw new Error(`Dispute resolution transaction failed: ${writeResult.txStatus}`);
 }
 
 /**

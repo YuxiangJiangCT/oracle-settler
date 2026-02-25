@@ -33,9 +33,14 @@ export function MarketCard({ market, marketId, onClick }: MarketCardProps) {
       {/* Header: ID + Status */}
       <div className="card-header">
         <span className="market-id">#{marketId}</span>
-        <span className={`market-status ${market.settled ? "settled" : "active"}`}>
-          {market.settled ? "Settled" : "Active"}
-        </span>
+        <div className="card-status-tags">
+          {market.settled && market.confidence > 0 && (Date.now() / 1000 - market.settledAt) < 3600 && (
+            <span className="market-status disputed">Dispute Window</span>
+          )}
+          <span className={`market-status ${market.settled ? "settled" : "active"}`}>
+            {market.settled ? "Settled" : "Active"}
+          </span>
+        </div>
       </div>
 
       {/* Question */}

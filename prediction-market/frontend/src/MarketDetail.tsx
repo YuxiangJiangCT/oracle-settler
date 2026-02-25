@@ -5,6 +5,7 @@ import { BetPanel } from "./BetPanel";
 import { ClaimPanel } from "./ClaimPanel";
 import { RequestSettlement } from "./RequestSettlement";
 import { SettlementExplorer } from "./SettlementExplorer";
+import { DisputePanel } from "./DisputePanel";
 
 interface MarketDetailProps {
   market: Market;
@@ -85,6 +86,14 @@ export function MarketDetail({ market, marketId, provider, account, onBack, onUp
 
           {/* Request Settlement (active markets only) */}
           <RequestSettlement
+            provider={provider}
+            marketId={marketId}
+            market={market}
+            onUpdate={onUpdate}
+          />
+
+          {/* Dispute Panel (settled markets) */}
+          <DisputePanel
             provider={provider}
             marketId={marketId}
             market={market}

@@ -24,6 +24,11 @@ contract PredictionMarket is ReceiverTemplate {
     error AlreadyClaimed();
     error TransferFailed();
     error DuplicateNullifier();
+    error DisputeWindowClosed();
+    error DisputeAlreadyFiled();
+    error InsufficientDisputeStake();
+    error DisputeWindowActive();
+    error NoActiveDispute();
 
     event MarketCreated(uint256 indexed marketId, string question, string asset, uint256 targetPrice, uint48 deadline, address creator);
     event PredictionMade(uint256 indexed marketId, address indexed predictor, Prediction prediction, uint256 amount);
@@ -31,6 +36,8 @@ contract PredictionMarket is ReceiverTemplate {
     event MarketSettled(uint256 indexed marketId, Prediction outcome, uint16 confidence, uint256 settledPrice);
     event MarketCancelled(uint256 indexed marketId, address indexed cancelledBy);
     event WinningsClaimed(uint256 indexed marketId, address indexed claimer, uint256 amount);
+    event DisputeFiled(uint256 indexed marketId, address indexed disputer, uint256 stake);
+    event DisputeResolved(uint256 indexed marketId, bool overturned, uint8 newOutcome, uint16 newConfidence, uint256 newSettledPrice);
 
     enum Prediction {
         Yes,
@@ -59,11 +66,22 @@ contract PredictionMarket is ReceiverTemplate {
         bool claimed;
     }
 
+    struct Dispute {
+        address disputer;
+        uint48  filedAt;
+        uint256 stake;
+        bool    resolved;
+        bool    overturned;
+    }
+
     uint48 public constant DEFAULT_DEADLINE_DURATION = 7 days;
+    uint48 public constant DISPUTE_WINDOW = 1 hours;
+    uint256 public constant DISPUTE_STAKE = 0.001 ether;
 
     uint256 internal nextMarketId;
     mapping(uint256 marketId => Market market) internal markets;
     mapping(uint256 marketId => mapping(address user => UserPrediction)) internal predictions;
+    mapping(uint256 marketId => Dispute) internal disputes;
 
     // ── World ID (optional sybil resistance) ─────────────────
     IWorldID public immutable worldId;
@@ -251,18 +269,55 @@ contract PredictionMarket is ReceiverTemplate {
     }
 
     // ================================================================
+    // │                  Dispute resolution by CRE                    │
+    // ================================================================
+
+    /// @notice Resolves a dispute from a CRE re-verification report.
+    /// @dev Called via onReport → _processReport when prefix byte is 0x02.
+    function _resolveDispute(bytes calldata report) internal {
+        (uint256 marketId, Prediction outcome, uint16 confidence, uint256 settledPrice) = abi.decode(
+            report,
+            (uint256, Prediction, uint16, uint256)
+        );
+
+        Dispute storage d = disputes[marketId];
+        if (d.disputer == address(0)) revert NoActiveDispute();
+        if (d.resolved) revert DisputeAlreadyFiled();
+
+        d.resolved = true;
+        bool overturned = (outcome != markets[marketId].outcome);
+        d.overturned = overturned;
+
+        if (overturned) {
+            markets[marketId].outcome = outcome;
+            markets[marketId].confidence = confidence;
+            markets[marketId].settledPrice = settledPrice;
+            markets[marketId].settledAt = uint48(block.timestamp);
+
+            (bool success,) = d.disputer.call{value: d.stake}("");
+            if (!success) revert TransferFailed();
+        }
+        // If not overturned: stake stays in contract (anti-spam penalty)
+
+        emit DisputeResolved(marketId, overturned, uint8(outcome), confidence, settledPrice);
+    }
+
+    // ================================================================
     // │                      CRE Entry Point                         │
     // ================================================================
 
     /// @inheritdoc ReceiverTemplate
-    /// @dev Routes to either market creation or settlement based on prefix byte.
+    /// @dev Routes based on prefix byte:
     ///      - No prefix → Create market
     ///      - Prefix 0x01 → Settle market
+    ///      - Prefix 0x02 → Resolve dispute
     /// @notice Known limitation: CRE-created markets have creator = forwarder address,
     ///         so cancelMarket() is not available for those markets.
     function _processReport(bytes calldata report) internal override {
         if (report.length > 0 && report[0] == 0x01) {
             _settleMarket(report[1:]);
+        } else if (report.length > 0 && report[0] == 0x02) {
+            _resolveDispute(report[1:]);
         } else {
             (string memory question, string memory asset, uint256 targetPrice) = abi.decode(
                 report,
@@ -270,6 +325,33 @@ contract PredictionMarket is ReceiverTemplate {
             );
             createMarket(question, asset, targetPrice);
         }
+    }
+
+    // ================================================================
+    // │                      Dispute settlement                      │
+    // ================================================================
+
+    /// @notice Dispute a settlement within the dispute window.
+    /// @dev Requires DISPUTE_STAKE ETH. Emits DisputeFiled for CRE Log Trigger.
+    function disputeMarket(uint256 marketId) external payable {
+        Market memory m = markets[marketId];
+
+        if (m.creator == address(0)) revert MarketDoesNotExist();
+        if (!m.settled) revert MarketNotSettled();
+        if (m.confidence == 0) revert MarketNotCancelled();
+        if (msg.value < DISPUTE_STAKE) revert InsufficientDisputeStake();
+        if (uint48(block.timestamp) > m.settledAt + DISPUTE_WINDOW) revert DisputeWindowClosed();
+        if (disputes[marketId].disputer != address(0)) revert DisputeAlreadyFiled();
+
+        disputes[marketId] = Dispute({
+            disputer: msg.sender,
+            filedAt: uint48(block.timestamp),
+            stake: msg.value,
+            resolved: false,
+            overturned: false
+        });
+
+        emit DisputeFiled(marketId, msg.sender, msg.value);
     }
 
     // ================================================================
@@ -317,7 +399,7 @@ contract PredictionMarket is ReceiverTemplate {
     // │                      Claim winnings                          │
     // ================================================================
 
-    /// @notice Claim winnings after market settlement.
+    /// @notice Claim winnings after market settlement and dispute window.
     /// @param marketId The ID of the market.
     function claim(uint256 marketId) external {
         Market memory m = markets[marketId];
@@ -325,6 +407,12 @@ contract PredictionMarket is ReceiverTemplate {
         if (m.creator == address(0)) revert MarketDoesNotExist();
         if (!m.settled) revert MarketNotSettled();
         if (m.confidence == 0) revert MarketNotCancelled(); // cancelled markets use refund()
+
+        // Block claims during dispute window
+        if (uint48(block.timestamp) <= m.settledAt + DISPUTE_WINDOW) revert DisputeWindowActive();
+        // Block claims during active (unresolved) dispute
+        Dispute memory d = disputes[marketId];
+        if (d.disputer != address(0) && !d.resolved) revert DisputeWindowActive();
 
         UserPrediction memory userPred = predictions[marketId][msg.sender];
 
@@ -365,5 +453,10 @@ contract PredictionMarket is ReceiverTemplate {
     /// @notice Get total number of markets created.
     function getNextMarketId() external view returns (uint256) {
         return nextMarketId;
+    }
+
+    /// @notice Get dispute details for a market.
+    function getDispute(uint256 marketId) external view returns (Dispute memory) {
+        return disputes[marketId];
     }
 }

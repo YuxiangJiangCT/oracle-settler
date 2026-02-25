@@ -8,13 +8,14 @@ interface SettlementExplorerProps {
 export function SettlementExplorer({ market, marketId }: SettlementExplorerProps) {
   if (!market.settled) return null;
 
+  const isEventMarket = market.targetPrice === 0n;
   const targetPriceUsd = Number(market.targetPrice) / 1e6;
   const settledPriceUsd = Number(market.settledPrice) / 1e6;
   const priceDiff = targetPriceUsd > 0
     ? Math.abs(settledPriceUsd - targetPriceUsd) / targetPriceUsd
     : 0;
   const priceDiffPercent = (priceDiff * 100).toFixed(1);
-  const usedAI = priceDiff <= 0.05;
+  const usedAI = isEventMarket || priceDiff <= 0.05;
   const outcomeLabel = market.outcome === 0 ? "YES" : "NO";
   const confidence = market.confidence / 100;
   const direction = settledPriceUsd >= targetPriceUsd ? "above" : "below";
@@ -30,42 +31,70 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
     {
       num: 2,
       title: "EVM State Read",
-      detail: `Asset: ${market.asset} | Target: $${targetPriceUsd.toLocaleString()}`,
+      detail: isEventMarket
+        ? `Event: ${market.asset} | Type: Event Market`
+        : `Asset: ${market.asset} | Target: $${targetPriceUsd.toLocaleString()}`,
       capability: "EVM Read",
       status: "complete" as const,
     },
-    {
-      num: 3,
-      title: "Dual-Source Price Fetch",
-      detail: `Confidential HTTP → CoinGecko: $${settledPriceUsd.toLocaleString()} | CoinCap: cross-validated`,
-      capability: "Confidential HTTP (x2)",
-      status: "complete" as const,
-    },
-    {
-      num: 4,
-      title: "Price Source Consensus",
-      detail: `Sources divergence <2% → validated | Diff vs target: ${priceDiffPercent}% ${direction}`,
-      capability: "Custom Compute",
-      status: "complete" as const,
-    },
-    ...(usedAI
+    ...(isEventMarket
       ? [
           {
+            num: 3,
+            title: "AI + Google Search",
+            detail: `Gemini AI with Google Search grounding — searched real-world news`,
+            capability: "Confidential HTTP (AI)",
+            status: "complete" as const,
+          },
+          {
+            num: 4,
+            title: "Event Verification",
+            detail: `AI analyzed news sources to determine if event occurred`,
+            capability: "Custom Compute",
+            status: "complete" as const,
+          },
+          {
             num: 5,
-            title: "AI Analysis (Gemini)",
-            detail: `Price within 5% → Gemini AI consulted for nuanced judgment`,
+            title: "AI Verdict",
+            detail: `Event outcome: ${outcomeLabel} (${confidence.toFixed(0)}% confidence)`,
             capability: "Confidential HTTP (AI)",
             status: "complete" as const,
           },
         ]
       : [
           {
-            num: 5,
-            title: "Direct Settlement",
-            detail: `Price ${priceDiffPercent}% ${direction} — clear result, no AI needed`,
+            num: 3,
+            title: "Dual-Source Price Fetch",
+            detail: `Confidential HTTP → CoinGecko: $${settledPriceUsd.toLocaleString()} | CoinCap: cross-validated`,
+            capability: "Confidential HTTP (x2)",
+            status: "complete" as const,
+          },
+          {
+            num: 4,
+            title: "Price Source Consensus",
+            detail: `Sources divergence <2% → validated | Diff vs target: ${priceDiffPercent}% ${direction}`,
             capability: "Custom Compute",
             status: "complete" as const,
           },
+          ...(priceDiff <= 0.05
+            ? [
+                {
+                  num: 5,
+                  title: "AI Analysis (Gemini)",
+                  detail: `Price within 5% → Gemini AI consulted for nuanced judgment`,
+                  capability: "Confidential HTTP (AI)",
+                  status: "complete" as const,
+                },
+              ]
+            : [
+                {
+                  num: 5,
+                  title: "Direct Settlement",
+                  detail: `Price ${priceDiffPercent}% ${direction} — clear result, no AI needed`,
+                  capability: "Custom Compute",
+                  status: "complete" as const,
+                },
+              ]),
         ]),
     {
       num: 6,
@@ -77,7 +106,9 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
     {
       num: 7,
       title: "On-Chain Settlement",
-      detail: `EVM Write → settleMarket(${marketId}, ${outcomeLabel}, ${confidence}%, $${settledPriceUsd.toLocaleString()})`,
+      detail: isEventMarket
+        ? `EVM Write → settleMarket(${marketId}, ${outcomeLabel}, ${confidence.toFixed(0)}%)`
+        : `EVM Write → settleMarket(${marketId}, ${outcomeLabel}, ${confidence.toFixed(0)}%, $${settledPriceUsd.toLocaleString()})`,
       capability: "EVM Write",
       status: "complete" as const,
     },
@@ -120,21 +151,23 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
           <span>Confidence</span>
           <strong>{confidence.toFixed(0)}%</strong>
         </div>
-        <div className="summary-row">
-          <span>Settled Price</span>
-          <strong>${settledPriceUsd.toLocaleString()}</strong>
-        </div>
+        {!isEventMarket && (
+          <div className="summary-row">
+            <span>Settled Price</span>
+            <strong>${settledPriceUsd.toLocaleString()}</strong>
+          </div>
+        )}
         <div className="summary-row">
           <span>Settlement Method</span>
-          <strong>{usedAI ? "AI-Assisted" : "Price Oracle"}</strong>
+          <strong>{isEventMarket ? "AI + Google Search" : usedAI ? "AI-Assisted" : "Price Oracle"}</strong>
         </div>
         <div className="summary-row">
-          <span>Price Sources</span>
-          <strong>CoinGecko + CoinCap</strong>
+          <span>{isEventMarket ? "Data Source" : "Price Sources"}</span>
+          <strong>{isEventMarket ? "Gemini AI (Google Search grounding)" : "CoinGecko + CoinCap"}</strong>
         </div>
         <div className="summary-row">
           <span>CRE Capabilities Used</span>
-          <strong>{usedAI ? "8" : "7"}</strong>
+          <strong>{isEventMarket ? "7" : usedAI ? "8" : "7"}</strong>
         </div>
       </div>
     </div>

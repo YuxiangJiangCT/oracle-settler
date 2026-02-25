@@ -28,6 +28,12 @@ export const PREDICTION_MARKET_ABI = [
   "function createMarketVerified(string question, string asset, uint256 targetPrice, uint256 root, uint256 nullifierHash, uint256[8] proof) returns (uint256)",
   "function worldId() view returns (address)",
 
+  // Dispute
+  "function disputeMarket(uint256 marketId) payable",
+  "function getDispute(uint256 marketId) view returns (tuple(address disputer, uint48 filedAt, uint256 stake, bool resolved, bool overturned))",
+  "function DISPUTE_WINDOW() view returns (uint48)",
+  "function DISPUTE_STAKE() view returns (uint256)",
+
   // Events
   "event MarketCreated(uint256 indexed marketId, string question, string asset, uint256 targetPrice, uint48 deadline, address creator)",
   "event PredictionMade(uint256 indexed marketId, address indexed predictor, uint8 prediction, uint256 amount)",
@@ -35,6 +41,8 @@ export const PREDICTION_MARKET_ABI = [
   "event MarketSettled(uint256 indexed marketId, uint8 outcome, uint16 confidence, uint256 settledPrice)",
   "event MarketCancelled(uint256 indexed marketId, address indexed cancelledBy)",
   "event WinningsClaimed(uint256 indexed marketId, address indexed claimer, uint256 amount)",
+  "event DisputeFiled(uint256 indexed marketId, address indexed disputer, uint256 stake)",
+  "event DisputeResolved(uint256 indexed marketId, bool overturned, uint8 newOutcome, uint16 newConfidence, uint256 newSettledPrice)",
 ];
 
 export interface Market {
@@ -57,4 +65,12 @@ export interface UserPrediction {
   amount: bigint;
   prediction: number; // 0 = Yes, 1 = No
   claimed: boolean;
+}
+
+export interface Dispute {
+  disputer: string;
+  filedAt: number;
+  stake: bigint;
+  resolved: boolean;
+  overturned: boolean;
 }

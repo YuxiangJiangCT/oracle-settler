@@ -251,6 +251,7 @@ contract PredictionMarketTest is Test {
         market.predict{value: 2 ether}(0, PredictionMarket.Prediction.No);
 
         _settleViaReport(0, 0, 100, 65000e6);
+        vm.warp(block.timestamp + 1 hours + 1); // past dispute window
 
         uint256 balBefore = alice.balance;
         vm.prank(alice);
@@ -269,6 +270,7 @@ contract PredictionMarketTest is Test {
         market.predict{value: 3 ether}(0, PredictionMarket.Prediction.No);
 
         _settleViaReport(0, 0, 100, 65000e6);
+        vm.warp(block.timestamp + 1 hours + 1); // past dispute window
 
         uint256 aliceBefore = alice.balance;
         vm.prank(alice);
@@ -299,6 +301,7 @@ contract PredictionMarketTest is Test {
         market.predict{value: 1 ether}(0, PredictionMarket.Prediction.Yes);
 
         _settleViaReport(0, 0, 100, 65000e6);
+        vm.warp(block.timestamp + 1 hours + 1); // past dispute window
 
         vm.prank(alice);
         market.claim(0);
@@ -317,6 +320,7 @@ contract PredictionMarketTest is Test {
         market.predict{value: 1 ether}(0, PredictionMarket.Prediction.No);
 
         _settleViaReport(0, 1, 100, 40000e6);
+        vm.warp(block.timestamp + 1 hours + 1); // past dispute window
 
         vm.prank(alice);
         vm.expectRevert(PredictionMarket.NothingToClaim.selector);
@@ -464,6 +468,7 @@ contract PredictionMarketTest is Test {
         market.predict{value: bobBet}(0, PredictionMarket.Prediction.No);
 
         _settleViaReport(0, 0, 100, 65000e6); // YES wins
+        vm.warp(block.timestamp + 1 hours + 1); // past dispute window
 
         uint256 totalPool = uint256(aliceBet) + uint256(charlieBet) + uint256(bobBet);
         uint256 winningPool = uint256(aliceBet) + uint256(charlieBet);
@@ -519,6 +524,199 @@ contract PredictionMarketTest is Test {
         // Same nullifier should revert (duplicate)
         vm.expectRevert(PredictionMarket.DuplicateNullifier.selector);
         verifiedMarket.createMarketVerified("ETH test", "ethereum", 5000e6, 123, 456, fakeProof);
+    }
+
+    // ================================================================
+    //  DISPUTE MECHANISM (12 tests)
+    // ================================================================
+
+    function _buildDisputeReport(
+        uint256 marketId,
+        uint8 outcome,
+        uint16 confidence,
+        uint256 settledPrice
+    ) internal pure returns (bytes memory) {
+        return abi.encodePacked(
+            bytes1(0x02),
+            abi.encode(marketId, outcome, confidence, settledPrice)
+        );
+    }
+
+    function _resolveDisputeViaReport(uint256 marketId, uint8 outcome, uint16 confidence, uint256 settledPrice) internal {
+        bytes memory report = _buildDisputeReport(marketId, outcome, confidence, settledPrice);
+        market.onReport("", report);
+    }
+
+    /// @dev Helper: create market, place bets, settle, return marketId
+    function _setupSettledMarket() internal returns (uint256) {
+        uint256 id = _createDefaultMarket();
+        vm.prank(alice);
+        market.predict{value: 1 ether}(id, PredictionMarket.Prediction.Yes);
+        vm.prank(bob);
+        market.predict{value: 1 ether}(id, PredictionMarket.Prediction.No);
+        _settleViaReport(id, 0, 10000, 64000e6); // YES @ $64K, 100% confidence
+        return id;
+    }
+
+    function test_disputeMarket_succeeds() public {
+        uint256 id = _setupSettledMarket();
+
+        vm.prank(charlie);
+        market.disputeMarket{value: 0.001 ether}(id);
+
+        PredictionMarket.Dispute memory d = market.getDispute(id);
+        assertEq(d.disputer, charlie);
+        assertEq(d.stake, 0.001 ether);
+        assertFalse(d.resolved);
+        assertFalse(d.overturned);
+    }
+
+    function test_disputeMarket_revertsIfWindowClosed() public {
+        uint256 id = _setupSettledMarket();
+
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        vm.prank(charlie);
+        vm.expectRevert(PredictionMarket.DisputeWindowClosed.selector);
+        market.disputeMarket{value: 0.001 ether}(id);
+    }
+
+    function test_disputeMarket_revertsIfInsufficientStake() public {
+        uint256 id = _setupSettledMarket();
+
+        vm.prank(charlie);
+        vm.expectRevert(PredictionMarket.InsufficientDisputeStake.selector);
+        market.disputeMarket{value: 0.0001 ether}(id);
+    }
+
+    function test_disputeMarket_revertsIfAlreadyFiled() public {
+        uint256 id = _setupSettledMarket();
+
+        vm.prank(charlie);
+        market.disputeMarket{value: 0.001 ether}(id);
+
+        vm.prank(alice);
+        vm.expectRevert(PredictionMarket.DisputeAlreadyFiled.selector);
+        market.disputeMarket{value: 0.001 ether}(id);
+    }
+
+    function test_disputeMarket_revertsIfNotSettled() public {
+        uint256 id = _createDefaultMarket();
+
+        vm.prank(charlie);
+        vm.expectRevert(PredictionMarket.MarketNotSettled.selector);
+        market.disputeMarket{value: 0.001 ether}(id);
+    }
+
+    function test_disputeMarket_revertsIfCancelled() public {
+        uint256 id = _createDefaultMarket();
+        market.cancelMarket(id);
+
+        vm.prank(charlie);
+        vm.expectRevert(PredictionMarket.MarketNotCancelled.selector);
+        market.disputeMarket{value: 0.001 ether}(id);
+    }
+
+    function test_resolveDispute_confirms_keepStake() public {
+        uint256 id = _setupSettledMarket();
+
+        vm.prank(charlie);
+        market.disputeMarket{value: 0.001 ether}(id);
+
+        uint256 charlieBalBefore = charlie.balance;
+
+        // CRE confirms original: YES @ $64K
+        _resolveDisputeViaReport(id, 0, 10000, 64000e6);
+
+        PredictionMarket.Dispute memory d = market.getDispute(id);
+        assertTrue(d.resolved);
+        assertFalse(d.overturned);
+
+        // Charlie does NOT get stake back
+        assertEq(charlie.balance, charlieBalBefore);
+
+        // Outcome unchanged
+        PredictionMarket.Market memory m = market.getMarket(id);
+        assertEq(uint8(m.outcome), 0); // still YES
+    }
+
+    function test_resolveDispute_overturns_returnStake() public {
+        uint256 id = _setupSettledMarket();
+
+        vm.prank(charlie);
+        market.disputeMarket{value: 0.001 ether}(id);
+
+        uint256 charlieBalBefore = charlie.balance;
+
+        // CRE overturns: NO @ $45K
+        _resolveDisputeViaReport(id, 1, 9000, 45000e6);
+
+        PredictionMarket.Dispute memory d = market.getDispute(id);
+        assertTrue(d.resolved);
+        assertTrue(d.overturned);
+
+        // Charlie gets stake back
+        assertEq(charlie.balance, charlieBalBefore + 0.001 ether);
+
+        // Outcome changed to NO
+        PredictionMarket.Market memory m = market.getMarket(id);
+        assertEq(uint8(m.outcome), 1); // now NO
+        assertEq(m.confidence, 9000);
+        assertEq(m.settledPrice, 45000e6);
+    }
+
+    function test_claim_revertsInDisputeWindow() public {
+        uint256 id = _setupSettledMarket();
+
+        // Alice won (YES), tries to claim immediately
+        vm.prank(alice);
+        vm.expectRevert(PredictionMarket.DisputeWindowActive.selector);
+        market.claim(id);
+    }
+
+    function test_claim_succeedsAfterWindow() public {
+        uint256 id = _setupSettledMarket();
+
+        // Warp past dispute window (1 hour)
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        // Alice can now claim
+        vm.prank(alice);
+        market.claim(id);
+
+        // Alice gets full pool (YES winner, 2 ETH total)
+        // alice bet 1 ETH YES, bob bet 1 ETH NO, YES wins → alice gets 2 ETH
+    }
+
+    function test_claim_revertsIfActiveDispute() public {
+        uint256 id = _setupSettledMarket();
+
+        vm.prank(charlie);
+        market.disputeMarket{value: 0.001 ether}(id);
+
+        // Warp past dispute window but dispute still active (unresolved)
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        vm.prank(alice);
+        vm.expectRevert(PredictionMarket.DisputeWindowActive.selector);
+        market.claim(id);
+    }
+
+    function test_claim_succeedsAfterDisputeResolved() public {
+        uint256 id = _setupSettledMarket();
+
+        vm.prank(charlie);
+        market.disputeMarket{value: 0.001 ether}(id);
+
+        // CRE confirms original
+        _resolveDisputeViaReport(id, 0, 10000, 64000e6);
+
+        // Warp past dispute window
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        // Alice can now claim
+        vm.prank(alice);
+        market.claim(id);
     }
 }
 
