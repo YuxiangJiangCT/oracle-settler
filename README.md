@@ -1,6 +1,6 @@
 # OracleSettler: Real-Data + AI Prediction Market Resolution on CRE
 
-Automated prediction market settlement using **dual-source price verification (CoinGecko + CoinCap)**, **AI judgment from Gemini**, and **Chainlink Runtime Environment (CRE)** for trustless, on-chain execution.
+Automated prediction market settlement using **dual-source price verification (CoinGecko + CoinCap)**, **AI judgment from Gemini**, **event market resolution**, **dispute arbitration**, and **Chainlink Runtime Environment (CRE)** for trustless, on-chain execution.
 
 **Live Frontend**: [oracle-settler.vercel.app](https://oracle-settler.vercel.app)
 
@@ -15,19 +15,22 @@ Prediction markets today face a **resolution bottleneck**:
 | **Manual resolution** | Slow, biased, single point of failure |
 | **Pure AI oracles** | Hallucination-prone, no verifiable data |
 | **Single price feed** | Manipulation risk, no redundancy |
+| **No recourse** | Wrong settlements are permanent — users can't challenge |
 
 ## Our Solution
 
-OracleSettler combines **three layers of trust** in a single CRE workflow:
+OracleSettler combines **four layers of trust** in a single CRE workflow:
 
 1. **Dual-source price consensus** — CoinGecko + CoinCap cross-validated (>2% divergence = reject)
 2. **Two-tier resolution** — >5% price diff = instant settlement; <5% = Gemini AI with confidence scoring
-3. **CRE-signed execution** — Multi-node consensus ensures no single party can manipulate outcomes
+3. **Event markets** — Non-price questions (e.g., "Will GPT-5 launch?") resolved via Gemini AI + Google Search
+4. **Dispute arbitration** — 1-hour challenge window after settlement; CRE strict re-verification with 70% confidence threshold
+5. **CRE-signed execution** — Multi-node consensus ensures no single party can manipulate outcomes
 
 ### Who Benefits
 
-- **Users**: Trustless settlement — no admin can alter outcomes after the fact
-- **Chainlink**: Real-world CRE use case demonstrating 10 capabilities in production
+- **Users**: Trustless settlement with dispute recourse — wrong outcomes can be challenged and overturned
+- **Chainlink**: Real-world CRE use case demonstrating 12 capabilities in production
 - **Developers**: Reference implementation for building CRE-powered DeFi applications
 
 ---
@@ -39,21 +42,32 @@ flowchart TD
     HTTP["HTTP Trigger<br/>(Market Creation)"] --> READ["EVM Read<br/>(Market Data)"]
     LOG["Log Trigger<br/>(Settlement Request)"] --> READ
     CRON["Cron Trigger<br/>(Every 6h)"] --> READ
-    READ --> CG["CoinGecko<br/>(Primary Price)"]
-    READ --> CC["CoinCap<br/>(Secondary Price)"]
+    READ --> TYPE{"Price or<br/>Event Market?"}
+    TYPE -- "Price" --> CG["CoinGecko<br/>(Primary Price)"]
+    TYPE -- "Price" --> CC["CoinCap<br/>(Secondary Price)"]
+    TYPE -- "Event" --> AI2["Gemini AI<br/>+ Google Search"]
     CG & CC --> DIV{"Sources<br/>diverge >2%?"}
     DIV -- "Yes" --> REJECT["❌ Reject<br/>Settlement"]
     DIV -- "No" --> THRESH{">5% from<br/>target?"}
     THRESH -- "Yes" --> DIRECT["Direct Settlement<br/>confidence = 100%"]
     THRESH -- "No" --> AI["Gemini AI<br/>Analysis"]
-    DIRECT & AI --> CONSENSUS["CRE Signed<br/>Consensus Report"]
+    DIRECT & AI & AI2 --> CONSENSUS["CRE Signed<br/>Consensus Report"]
     CONSENSUS --> WRITE["EVM Write<br/>_settleMarket()"]
+    WRITE --> WINDOW["1hr Dispute<br/>Window"]
+    WINDOW -- "No dispute" --> CLAIM["✅ Claims<br/>Unlocked"]
+    WINDOW -- "Dispute filed" --> DLOG["Log Trigger<br/>(DisputeFiled)"]
+    DLOG --> STRICT["CRE Strict<br/>Re-verification"]
+    STRICT --> RESOLVE["EVM Write<br/>resolveDispute()"]
+    RESOLVE --> CLAIM
 
     style HTTP fill:#375BD2,color:#fff
     style LOG fill:#375BD2,color:#fff
     style CRON fill:#375BD2,color:#fff
+    style DLOG fill:#375BD2,color:#fff
     style REJECT fill:#ef4444,color:#fff
     style WRITE fill:#22c55e,color:#fff
+    style CLAIM fill:#22c55e,color:#fff
+    style STRICT fill:#f59e0b,color:#fff
 ```
 
 ### Market Lifecycle
@@ -69,10 +83,16 @@ stateDiagram-v2
     Predicted --> SettlementRequested: requestSettlement()
     SettlementRequested --> Settling: CRE Log Trigger
     Created --> Settling: CRE Cron (6h auto-scan)
-    Settling --> PriceFetch: Dual-Source HTTP
+    Settling --> PriceFetch: Price Market → Dual-Source HTTP
+    Settling --> AIJudgment: Event Market → Gemini AI
     PriceFetch --> Rejected: Sources diverge >2%
     PriceFetch --> Settled: Consensus reached
-    Settled --> Claimed: claim() by winners
+    AIJudgment --> Settled: AI confidence ≥ 60%
+    Settled --> DisputeWindow: 1hr challenge period
+    DisputeWindow --> Claimed: No dispute → claim()
+    DisputeWindow --> Disputed: disputeMarket() + 0.001 ETH
+    Disputed --> Resolved: CRE strict re-verify
+    Resolved --> Claimed: claim() by winners
     Rejected --> SettlementRequested: Retry later
 ```
 
@@ -82,11 +102,13 @@ stateDiagram-v2
 
 The React frontend provides a full prediction market experience:
 
-- **Market List**: Browse all on-chain markets with odds bars and status
+- **Market List**: Browse all on-chain markets with odds bars, status tags (Open, Settled, Dispute Window, Cancelled)
 - **Market Detail**: Place YES/NO predictions, request settlements, claim winnings
-- **Settlement Explorer**: Step-by-step visualization of how CRE settled each market
+- **Settlement Explorer**: Step-by-step visualization of how CRE settled each market (price vs event path)
+- **Dispute Panel**: File disputes during 1-hour window, track re-verification status, view resolution outcomes
 - **Price Comparison**: Cross-platform verification (CRE vs CoinGecko vs CoinCap live)
-- **Create Market**: Deploy new prediction markets with preset templates
+- **Create Market**: Deploy new prediction markets — both price targets and free-form event questions
+- **Event Markets**: "Event Market" badge for non-price questions resolved via AI
 
 ### Running the Frontend
 
@@ -135,7 +157,7 @@ Or use the Makefile:
 ```bash
 make install   # Install all dependencies
 make build     # Build contracts + frontend
-make test      # Run all tests (35 passing)
+make test      # Run all tests (62 passing)
 make dev       # Start frontend dev server
 ```
 
@@ -147,8 +169,14 @@ forge create --broadcast \
   --private-key $YOUR_PRIVATE_KEY \
   --root contracts \
   src/PredictionMarket.sol:PredictionMarket \
-  --constructor-args 0x15fc6ae953e024d975e77382eeec56a9101f9f88
+  --constructor-args \
+    0x15fc6ae953e024d975e77382eeec56a9101f9f88 \
+    0x0000000000000000000000000000000000000000 \
+    "app_e5fb2e27e8b9d3c7ea376b845676f05a" \
+    "create-market"
 ```
+
+Constructor args: CRE Forwarder, World ID Router (0x0 to disable), World ID App ID, Action ID.
 
 Update `my-workflow/config.staging.json` with the deployed contract address.
 
@@ -178,15 +206,15 @@ cre workflow simulate my-workflow --non-interactive --trigger-index 1 \
 
 ---
 
-## Demo: Multi-Asset Settlement
+## Demo: Multi-Market Settlement
 
-Three markets deployed and settled on Sepolia with real CoinGecko + CoinCap prices:
+Three markets deployed on Sepolia demonstrating all resolution paths:
 
-| Market | Asset | Question | Target | Actual Price | Outcome | Confidence |
-|--------|-------|----------|--------|-------------|---------|-----------|
-| #0 | BTC | Will BTC be above $100,000? | $100,000 | $64,164 | NO | 75% |
-| #1 | ETH | Will ETH be above $5,000? | $5,000 | $1,858 | NO | 75% |
-| #2 | SOL | Will SOL be above $200? | $200 | $79 | NO | 75% |
+| Market | Type | Question | Target | Resolution Path |
+|--------|------|----------|--------|----------------|
+| #0 | Price | Will BTC be above $100,000 by March 2026? | $100K | Dual-source price + threshold |
+| #1 | Price | Will ETH exceed $5,000? | $5K | Dual-source price + AI borderline |
+| #2 | Event | Will GPT-5 be released before July 2026? | N/A | Gemini AI + Google Search |
 
 **Contract (Sepolia)**: [`0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5`](https://sepolia.etherscan.io/address/0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5)
 
@@ -231,29 +259,54 @@ Each verified human can only create one market per action (duplicate nullifier =
 
 ---
 
-## CRE Capabilities Used (10)
+## Dispute Arbitration
+
+Settled markets enter a **1-hour dispute window** before claims are unlocked:
+
+| Parameter | Value |
+|-----------|-------|
+| **Window** | 1 hour after settlement |
+| **Stake** | 0.001 ETH (returned if overturned, forfeited if confirmed) |
+| **Re-verification** | CRE strict mode — 70% confidence threshold |
+| **Report prefix** | `0x02` (vs `0x01` for settlement, `0x00` for creation) |
+
+**How it works:**
+1. User calls `disputeMarket(marketId)` with 0.001 ETH within 1 hour of settlement
+2. `DisputeFiled` event triggers CRE's dispute handler
+3. CRE re-runs full verification in strict mode — fetches fresh prices (or AI for event markets)
+4. If new confidence ≥ 70% AND outcome differs: **overturned** (stake returned, outcome flipped)
+5. If new confidence < 70% OR same outcome: **confirmed** (stake forfeited to contract)
+6. Claims unlock immediately after resolution (or after 1-hour window with no dispute)
+
+---
+
+## CRE Capabilities Used (12)
 
 | # | Capability | Purpose |
 |---|-----------|---------|
 | 1 | **HTTP Trigger** | Market creation via webhook |
-| 2 | **Log Trigger** | Event-driven on-demand settlement |
-| 3 | **Cron Trigger** | Scheduled auto-settlement every 6 hours |
-| 4 | **EVM Read** | Read market data (asset, targetPrice, pools) |
-| 5 | **EVM Write** | Write signed settlement report to contract |
-| 6 | **Confidential HTTP (CoinGecko)** | Primary price oracle (API key in WASM) |
-| 7 | **Confidential HTTP (CoinCap)** | Secondary price oracle for dual-source consensus |
-| 8 | **Confidential HTTP (Gemini AI)** | AI judgment for borderline cases |
-| 9 | **Consensus Aggregation** | Multi-node agreement on price data |
-| 10 | **Custom Compute** | Price threshold logic + source divergence check |
+| 2 | **Log Trigger (Settlement)** | Event-driven on-demand settlement |
+| 3 | **Log Trigger (Dispute)** | Dispute-filed event triggers re-verification |
+| 4 | **Cron Trigger** | Scheduled auto-settlement every 6 hours |
+| 5 | **EVM Read** | Read market data (asset, targetPrice, pools, dispute state) |
+| 6 | **EVM Write** | Write signed settlement/dispute report to contract |
+| 7 | **Confidential HTTP (CoinGecko)** | Primary price oracle (API key in WASM) |
+| 8 | **Confidential HTTP (CoinCap)** | Secondary price oracle for dual-source consensus |
+| 9 | **Confidential HTTP (Gemini AI)** | AI judgment for borderline + event markets |
+| 10 | **Consensus Aggregation** | Multi-node agreement on price data |
+| 11 | **Custom Compute** | Price threshold logic + source divergence check |
+| 12 | **Strict Compute** | Dispute re-verification with 70% confidence threshold |
 
 ---
 
 ## Testing
 
-35 tests covering all contract functions, World ID integration, cancel/refund, deadline enforcement, and fuzz testing:
+62 tests across 2 test suites covering all contract functions, dispute arbitration, event markets, World ID, and E2E demo flows:
 
 ```
 $ forge test -vvv
+
+# ── PredictionMarketTest (47 tests) ──────────────────
 
 # Market Creation (5)
 [PASS] test_createMarket_succeeds
@@ -272,7 +325,7 @@ $ forge test -vvv
 [PASS] test_predict_revertsAfterDeadline
 [PASS] test_predict_succeedsBeforeDeadline
 
-# Settlement (4)
+# Settlement (6)
 [PASS] test_requestSettlement_emitsEvent
 [PASS] test_requestSettlement_revertsIfNotExist
 [PASS] test_settleMarket_viaCRE
@@ -280,13 +333,29 @@ $ forge test -vvv
 [PASS] test_settle_revertsIfNotExist
 [PASS] test_settle_setsAllFields
 
-# Claims (6)
+# Claims — with Dispute Window (8)
 [PASS] test_claim_winnerGetsFullPool
 [PASS] test_claim_proportionalPayout
 [PASS] test_claim_revertsIfNotSettled
 [PASS] test_claim_revertsIfAlreadyClaimed
 [PASS] test_claim_revertsIfLoser
 [PASS] test_claim_revertsOnCancelledMarket
+[PASS] test_claim_revertsInDisputeWindow
+[PASS] test_claim_succeedsAfterWindow
+[PASS] test_claim_revertsIfActiveDispute
+[PASS] test_claim_succeedsAfterDisputeResolved
+
+# Dispute Arbitration (6)
+[PASS] test_disputeMarket_succeeds
+[PASS] test_disputeMarket_revertsIfNotSettled
+[PASS] test_disputeMarket_revertsIfWindowClosed
+[PASS] test_disputeMarket_revertsIfInsufficientStake
+[PASS] test_disputeMarket_revertsIfAlreadyFiled
+[PASS] test_disputeMarket_revertsIfCancelled
+
+# Dispute Resolution (2)
+[PASS] test_resolveDispute_confirms_keepStake
+[PASS] test_resolveDispute_overturns_returnStake
 
 # Cancel & Refund (4)
 [PASS] test_cancelMarket_succeeds
@@ -304,7 +373,25 @@ $ forge test -vvv
 [PASS] test_multipleMarkets_isolation
 [PASS] testFuzz_claim_proportionalPayout (256 runs)
 
-Suite result: ok. 35 passed; 0 failed; 0 skipped
+# ── E2EDemoTest (15 tests) ───────────────────────────
+
+[PASS] test_demo1_priceMarket_fullLifecycle
+[PASS] test_demo2_eventMarket_aiSettlement
+[PASS] test_demo3_dispute_confirmed
+[PASS] test_demo4_dispute_overturned
+[PASS] test_demo5_creAutoCreateMarket
+[PASS] test_demo6_worldIdVerifiedCreation
+[PASS] test_demo7_deadlineEnforcement
+[PASS] test_demo8_cancelAndRefund
+[PASS] test_demo9_disputeTimingEdgeCases
+[PASS] test_demo10_multipleMarketsIsolation
+[PASS] test_demo11_proportionalPayout
+[PASS] test_demo12_disputeOnEventMarket
+[PASS] test_demo13_allErrorConditions
+[PASS] test_demo14_contractConstants
+[PASS] test_demo15_fullDemoSequence
+
+Suite result: ok. 62 passed; 0 failed; 0 skipped
 ```
 
 ---
@@ -313,22 +400,28 @@ Suite result: ok. 35 passed; 0 failed; 0 skipped
 
 | File | Changes | Why |
 |------|---------|-----|
-| `contracts/src/PredictionMarket.sol` | Added `asset`, `targetPrice`, `settledPrice`, `deadline` to Market struct; `cancelMarket()`, `refund()`, `createMarketWithDeadline()`, `createMarketVerified()` (World ID); claim division-by-zero protection | Multi-asset markets, market governance, deadline enforcement, sybil resistance |
+| `contracts/src/PredictionMarket.sol` | Added `asset`, `targetPrice`, `settledPrice`, `deadline` to Market struct; `cancelMarket()`, `refund()`, `createMarketWithDeadline()`, `createMarketVerified()` (World ID); `disputeMarket()`, `resolveDispute()` via CRE; `_processReport()` 3-way routing (0x00/0x01/0x02); 1hr dispute window + 0.001 ETH stake; claim gating on dispute state | Multi-asset markets, event markets, dispute arbitration, market governance, sybil resistance |
 | `contracts/src/interfaces/IWorldID.sol` | **New** — World ID verification interface | Sybil-resistant market creation via ZK proof |
 | `contracts/src/helpers/ByteHasher.sol` | **New** — Field hash utility | World ID external nullifier computation |
-| `contracts/test/PredictionMarket.t.sol` | **New** — 35 Foundry tests (incl. fuzz + World ID) | Full coverage: creation, prediction, settlement, claims, cancel/refund, deadline, World ID, edge cases |
+| `contracts/test/PredictionMarket.t.sol` | **New** — 47 Foundry tests (incl. 8 dispute + fuzz + World ID) | Full coverage: creation, prediction, settlement, claims, disputes, cancel/refund, deadline, World ID |
+| `contracts/test/E2EDemo.t.sol` | **New** — 15 E2E demo tests | Complete lifecycle scenarios: price market, event market, dispute confirmed/overturned, timing edge cases |
 | `my-workflow/logCallback.ts` | Refactored to use shared settlement logic | Clean architecture, code reuse with Cron trigger |
 | `my-workflow/cronCallback.ts` | **New** — Scheduled market scanner | Auto-settle expired markets without manual intervention |
-| `my-workflow/settlementLogic.ts` | **New** — Dual-source price fetch + threshold + AI + write | DRY principle across triggers with dual-source consensus |
+| `my-workflow/disputeCallback.ts` | **New** — Dispute re-verification handler | CRE strict mode: re-fetch + 70% confidence threshold |
+| `my-workflow/settlementLogic.ts` | **New** — Dual-source price fetch + event AI + threshold + write | DRY principle across triggers; `writeDisputeResolution()` for dispute reports (0x02 prefix) |
 | `my-workflow/coincapPrice.ts` | **New** — CoinCap price fetcher | Second independent price source for consensus |
-| `my-workflow/main.ts` | Added Cron trigger registration | Three trigger types for comprehensive automation |
+| `my-workflow/main.ts` | Added Cron + Dispute trigger registration | Four trigger types: HTTP, Log:Settlement, Log:Dispute, Cron |
 | `my-workflow/httpCallback.ts` | Updated for asset + targetPrice params | Support new market creation schema |
-| `frontend/` | **New** — React + TypeScript + ethers.js + IDKit | Full market UI with Settlement Explorer + World ID verification |
+| `frontend/src/DisputePanel.tsx` | **New** — Dispute UI component | 4-state panel: window countdown, file dispute, active status, resolution display |
+| `frontend/src/SettlementExplorer.tsx` | Updated for event markets | Shows "AI + Search" path for non-price markets |
+| `frontend/src/MarketCard.tsx` | Added dispute window tag | Amber "Dispute Window" badge for recently settled markets |
+| `frontend/` | **New** — React + TypeScript + ethers.js + IDKit | Full market UI with Settlement Explorer + Dispute Panel + World ID verification |
 
 ---
 
 ## How It Works
 
+### Price Markets
 1. **Market Creation**: User calls `createMarket("Will BTC be above $50K?", "bitcoin", 50000e6)` specifying the CoinGecko asset ID and target price in 6 decimals
 2. **Prediction**: Users bet YES or NO by sending ETH to `predict(marketId, prediction)`
 3. **Settlement Request**: Anyone calls `requestSettlement(marketId)` which emits a `SettlementRequested` event
@@ -339,17 +432,31 @@ Suite result: ok. 35 passed; 0 failed; 0 skipped
    - If price is >5% away from target: instant settlement (no AI needed)
    - If price is within 5%: Gemini AI analyzes with full context and provides confidence score
 8. **On-Chain Settlement**: CRE signs and writes the settlement report to the smart contract
-9. **Auto-Settlement**: Cron trigger runs every 6 hours to catch and settle any expired markets
+
+### Event Markets
+1. **Market Creation**: `createMarket("Will GPT-5 launch?", "gpt5-release", 0)` — targetPrice=0 signals event market
+2. **AI Resolution**: CRE detects non-price asset, routes to Gemini AI + Google Search instead of price feeds
+3. **Confidence Scoring**: AI provides YES/NO verdict with confidence percentage (must be ≥60% to settle)
+
+### Dispute Arbitration
+9. **Dispute Window**: After settlement, a 1-hour window opens for challenges
+10. **Filing Dispute**: Any user calls `disputeMarket(marketId)` with 0.001 ETH stake, emitting `DisputeFiled`
+11. **CRE Re-Verification**: Dispute Log Trigger fires, CRE re-runs settlement in **strict mode** — if new confidence < 70%, original outcome is preserved
+12. **Resolution**: CRE writes `resolveDispute()` on-chain — either confirms (stake forfeited) or overturns (stake returned, outcome flipped)
+13. **Claims Unlocked**: After dispute window closes (or dispute resolved), winners can call `claim()`
+
+### Auto-Settlement
+14. **Cron Trigger**: Runs every 6 hours to scan and settle any expired markets without manual intervention
 
 ---
 
 ## Tech Stack
 
-- **Smart Contract**: Solidity 0.8.24 (Foundry) — 340 lines, 35 tests
+- **Smart Contract**: Solidity 0.8.24 (Foundry, IR optimizer) — 468 lines, 62 tests
 - **Sybil Resistance**: World ID on-chain verification (Sepolia WorldIDRouter)
-- **CRE Workflow**: TypeScript (Bun + CRE SDK) — 10 capabilities, 3 triggers
+- **CRE Workflow**: TypeScript (Bun + CRE SDK) — 12 capabilities, 4 triggers, 8 modules
 - **Price Oracles**: CoinGecko + CoinCap (dual-source via Confidential HTTP)
-- **AI**: Google Gemini 2.0 Flash (via Confidential HTTP)
-- **Frontend**: React + TypeScript + Vite + ethers.js v6 + World ID IDKit — 15 components, 1700 lines
+- **AI**: Google Gemini 2.0 Flash (via Confidential HTTP) — price analysis + event judgment
+- **Frontend**: React + TypeScript + Vite + ethers.js v6 + World ID IDKit — 14 components
 - **Network**: Ethereum Sepolia Testnet
 - **CRE Forwarder**: `0x15fc6ae953e024d975e77382eeec56a9101f9f88`
