@@ -83,7 +83,7 @@ export function PriceComparison({ markets }: PriceComparisonProps) {
                       ? "Loading..."
                       : geckoPrice !== null
                       ? formatUsd(geckoPrice)
-                      : "N/A"}
+                      : <span title="CoinGecko API did not return data">N/A</span>}
                   </span>
                 </div>
                 <div className="comp-row">
@@ -93,7 +93,7 @@ export function PriceComparison({ markets }: PriceComparisonProps) {
                       ? "Loading..."
                       : capPrice !== null
                       ? formatUsd(capPrice)
-                      : "N/A"}
+                      : <span title="CoinCap API unavailable">N/A</span>}
                   </span>
                 </div>
                 <div className="comp-row">
@@ -101,7 +101,7 @@ export function PriceComparison({ markets }: PriceComparisonProps) {
                   <span className={`comp-value ${sourceDivergence !== null && sourceDivergence < 2 ? "highlight-green" : sourceDivergence !== null ? "highlight-yellow" : ""}`}>
                     {sourceDivergence !== null
                       ? `${sourceDivergence.toFixed(2)}% ${sourceDivergence < 2 ? "(within 2% threshold)" : "(above 2% threshold)"}`
-                      : "N/A"}
+                      : <span title="Requires both CoinGecko and CoinCap data">N/A</span>}
                   </span>
                 </div>
                 <div className="comp-row">
@@ -114,7 +114,7 @@ export function PriceComparison({ markets }: PriceComparisonProps) {
                   <span className="comp-label">Live Verification</span>
                   <span className={`comp-value ${agrees ? "highlight-green" : liveOutcome ? "highlight-yellow" : ""}`}>
                     {liveOutcome === null
-                      ? "N/A"
+                      ? <span title="No live price data available">N/A</span>
                       : agrees
                       ? "Agrees"
                       : `Now suggests ${liveOutcome} (price moved)`}

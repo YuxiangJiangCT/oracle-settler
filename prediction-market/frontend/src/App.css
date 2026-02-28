@@ -311,6 +311,8 @@ body::after {
   border: 1px solid rgba(255,255,255,0.08);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: default;
+  display: flex;
+  flex-direction: column;
 }
 
 .market-card::before {
@@ -350,7 +352,7 @@ body::after {
 .market-status {
   padding: 3px 10px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -485,6 +487,18 @@ body::after {
   box-shadow: 0 2px 8px rgba(239,68,68,0.4);
 }
 
+.winner-icon {
+  color: #22c55e;
+  font-weight: 700;
+}
+
+.odds-caption {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+  margin-top: 4px;
+}
+
 /* ===== SETTLEMENT RESULT ===== */
 .settlement-result {
   display: flex;
@@ -522,7 +536,7 @@ body::after {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 12px;
+  margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid rgba(255,255,255,0.04);
   font-size: 12px;

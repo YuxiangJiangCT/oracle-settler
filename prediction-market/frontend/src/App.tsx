@@ -242,8 +242,8 @@ function App() {
             <span className="logo-text" onClick={() => setPage("markets")} style={{ cursor: "pointer" }}>
               OracleSettler
             </span>
-            <span className="chain-badge">SEPOLIA</span>
-            <span className="cre-badge">CRE</span>
+            <span className="chain-badge" title="Ethereum Sepolia Testnet">SEPOLIA</span>
+            <span className="cre-badge" title="Chainlink CRE Oracle Network">CRE</span>
           </div>
           <div className="nav-tabs">
             <button

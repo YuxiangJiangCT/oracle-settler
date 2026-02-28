@@ -71,7 +71,7 @@ export function MarketCard({ market, marketId, onClick }: MarketCardProps) {
       </div>
 
       {/* Odds Bar */}
-      <OddsBar yesPool={market.totalYesPool} noPool={market.totalNoPool} />
+      <OddsBar yesPool={market.totalYesPool} noPool={market.totalNoPool} settled={market.settled} outcome={market.outcome} />
 
       {/* Settlement Result (if settled) */}
       {market.settled && (

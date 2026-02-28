@@ -39,11 +39,11 @@ export function MarketDetail({ market, marketId, provider, account, onBack, onUp
 
   const phase = getPhase();
   const phases = [
-    { label: "Created", step: 0 },
-    { label: "Predictions", step: 1 },
-    { label: "Settlement", step: 2 },
-    { label: "Dispute", step: 3 },
-    { label: "Claims", step: 4 },
+    { label: "Created", step: 0, tooltip: "Market created on-chain by creator" },
+    { label: "Predictions", step: 1, tooltip: "Users place YES/NO predictions with ETH" },
+    { label: "Settlement", step: 2, tooltip: "CRE oracle fetches price data and settles outcome" },
+    { label: "Dispute", step: 3, tooltip: "1-hour window to challenge the settlement (0.001 ETH stake)" },
+    { label: "Claims", step: 4, tooltip: "Winners can claim their ETH payouts" },
   ];
 
   return (
@@ -95,7 +95,7 @@ export function MarketDetail({ market, marketId, provider, account, onBack, onUp
                 }`}>
                   {p.step < phase ? "✓" : ""}
                 </div>
-                <span className={`lifecycle-label ${p.step === phase ? "lifecycle-label-current" : ""}`}>
+                <span className={`lifecycle-label ${p.step === phase ? "lifecycle-label-current" : ""}`} title={p.tooltip}>
                   {p.label}
                 </span>
               </div>
@@ -105,7 +105,7 @@ export function MarketDetail({ market, marketId, provider, account, onBack, onUp
       )}
 
       {/* Odds Bar */}
-      <OddsBar yesPool={market.totalYesPool} noPool={market.totalNoPool} />
+      <OddsBar yesPool={market.totalYesPool} noPool={market.totalNoPool} settled={market.settled} outcome={market.outcome} />
 
       {/* Settlement Result */}
       {market.settled && (
