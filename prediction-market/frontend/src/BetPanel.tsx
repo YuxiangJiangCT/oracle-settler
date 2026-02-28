@@ -34,6 +34,7 @@ export function BetPanel({ provider, marketId, isActive, onUpdate }: BetPanelPro
       setBetAmount("");
       setSelectedOption(null);
       onUpdate();
+      setTimeout(() => onUpdate(), 2000);
     } catch (err: any) {
       if (err.code === "ACTION_REJECTED") {
         setTxStatus("Transaction cancelled");

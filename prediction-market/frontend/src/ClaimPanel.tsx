@@ -11,10 +11,13 @@ interface ClaimPanelProps {
   onUpdate: () => void;
 }
 
+const CONFETTI_COLORS = ["#6366f1", "#06b6d4", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#22d3ee"];
+
 export function ClaimPanel({ provider, account, marketId, market, onUpdate }: ClaimPanelProps) {
   const [prediction, setPrediction] = useState<UserPrediction | null>(null);
   const [loading, setLoading] = useState(false);
   const [txStatus, setTxStatus] = useState("");
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     loadPrediction();
@@ -54,7 +57,10 @@ export function ClaimPanel({ provider, account, marketId, market, onUpdate }: Cl
       setTxStatus("Waiting for confirmation...");
       await tx.wait();
       setTxStatus("Claimed!");
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
       onUpdate();
+      setTimeout(() => onUpdate(), 2000);
       loadPrediction();
     } catch (err: any) {
       if (err.code === "ACTION_REJECTED") {
@@ -112,6 +118,23 @@ export function ClaimPanel({ provider, account, marketId, market, onUpdate }: Cl
       )}
 
       {txStatus && <div className="tx-status">{txStatus}</div>}
+
+      {showConfetti && (
+        <div className="confetti-container">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <span
+              key={i}
+              className="confetti-piece"
+              style={{
+                left: `${10 + Math.random() * 80}%`,
+                background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+                animationDelay: `${Math.random() * 0.5}s`,
+                animationDuration: `${1.5 + Math.random() * 1}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

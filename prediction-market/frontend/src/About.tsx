@@ -10,6 +10,8 @@ export function About() {
     { name: "Confidential HTTP (Gemini AI)", desc: "AI judgment for borderline cases" },
     { name: "Consensus Aggregation", desc: "Multi-node agreement on settlement data" },
     { name: "Custom Compute", desc: "Price threshold logic + source divergence check" },
+    { name: "Log Trigger (Dispute)", desc: "Dispute-filed event triggers strict re-verification" },
+    { name: "Strict Compute", desc: "Dispute re-verification with 70% confidence threshold" },
   ];
 
   return (
@@ -66,6 +68,20 @@ export function About() {
               <p>CRE consensus signs and writes the result to the smart contract</p>
             </div>
           </div>
+          <div className="about-step">
+            <span className="about-step-num">7</span>
+            <div>
+              <strong>Dispute Window</strong>
+              <p>1-hour challenge period after settlement. Stake 0.001 ETH to dispute the outcome</p>
+            </div>
+          </div>
+          <div className="about-step">
+            <span className="about-step-num">8</span>
+            <div>
+              <strong>Dispute Resolution</strong>
+              <p>CRE re-verifies in strict mode (70% threshold). Overturned = stake returned, outcome flipped</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -73,7 +89,7 @@ export function About() {
       <div className="about-section">
         <h3>CRE Capabilities Used</h3>
         <p className="about-section-desc">
-          OracleSettler leverages 10 distinct Chainlink CRE capabilities across 3 trigger types.
+          OracleSettler leverages 12 distinct Chainlink CRE capabilities across 4 trigger types.
         </p>
         <div className="capabilities-grid">
           {capabilities.map((cap, i) => (
@@ -116,6 +132,14 @@ export function About() {
               and how the outcome was determined.
             </p>
           </div>
+          <div className="innovation-card">
+            <h4>Dispute Arbitration</h4>
+            <p>
+              After settlement, a 1-hour dispute window allows anyone to challenge
+              the outcome by staking ETH. CRE re-verifies with a stricter 70%
+              confidence threshold — ensuring fair, decentralized arbitration.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -124,7 +148,7 @@ export function About() {
         <a href="https://github.com/YuxiangJiangCT/oracle-settler" target="_blank" rel="noopener noreferrer" className="about-link">
           GitHub Repository
         </a>
-        <a href="https://sepolia.etherscan.io/address/0x204173d93b41D76c467D6A75856Ba03A3412B10d" target="_blank" rel="noopener noreferrer" className="about-link">
+        <a href="https://sepolia.etherscan.io/address/0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5" target="_blank" rel="noopener noreferrer" className="about-link">
           Contract on Etherscan
         </a>
         <a href="https://chain.link/cre" target="_blank" rel="noopener noreferrer" className="about-link">

@@ -23,6 +23,15 @@ function timeAgo(timestamp: number): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+function deadlineInfo(deadline: number): { text: string; urgency: "green" | "amber" | "red" } | null {
+  if (deadline === 0) return null;
+  const remaining = deadline - Date.now() / 1000;
+  if (remaining <= 0) return { text: "Expired", urgency: "red" };
+  if (remaining < 3600) return { text: `${Math.floor(remaining / 60)}m left`, urgency: "red" };
+  if (remaining < 86400) return { text: `${Math.floor(remaining / 3600)}h left`, urgency: "amber" };
+  return { text: `${Math.floor(remaining / 86400)}d left`, urgency: "green" };
+}
+
 export function MarketCard({ market, marketId, onClick }: MarketCardProps) {
   const outcomeLabel = market.outcome === 0 ? "YES" : "NO";
   const outcomeClass = market.outcome === 0 ? "yes-wins" : "no-wins";
@@ -82,6 +91,12 @@ export function MarketCard({ market, marketId, onClick }: MarketCardProps) {
             ? `Settled ${timeAgo(market.settledAt)}`
             : `Created ${timeAgo(market.createdAt)}`}
         </span>
+        {!market.settled && (() => {
+          const dl = deadlineInfo(market.deadline);
+          return dl ? (
+            <span className={`deadline-badge deadline-${dl.urgency}`}>{dl.text}</span>
+          ) : null;
+        })()}
       </div>
     </div>
   );

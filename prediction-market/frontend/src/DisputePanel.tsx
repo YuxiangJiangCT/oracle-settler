@@ -79,6 +79,7 @@ export function DisputePanel({ provider, marketId, market, onUpdate }: DisputePa
       await tx.wait();
       setTxStatus("Dispute filed! CRE will re-verify this market.");
       onUpdate();
+      setTimeout(() => onUpdate(), 2000);
       loadDispute();
     } catch (err: any) {
       if (err.code === "ACTION_REJECTED") {

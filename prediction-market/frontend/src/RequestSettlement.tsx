@@ -29,6 +29,7 @@ export function RequestSettlement({ provider, marketId, market, onUpdate }: Requ
       await tx.wait();
       setTxStatus("Settlement requested! CRE workflow will process this market.");
       onUpdate();
+      setTimeout(() => onUpdate(), 2000);
     } catch (err: any) {
       if (err.code === "ACTION_REJECTED") {
         setTxStatus("Transaction cancelled");

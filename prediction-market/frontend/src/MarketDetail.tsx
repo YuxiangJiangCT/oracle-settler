@@ -27,6 +27,25 @@ export function MarketDetail({ market, marketId, provider, account, onBack, onUp
   const totalPool = market.totalYesPool + market.totalNoPool;
   const isActive = !market.settled;
 
+  // Lifecycle phase calculation
+  const getPhase = (): number => {
+    if (!market.settled && totalPool === 0n) return 0; // Created
+    if (!market.settled) return 1; // Predictions Open
+    if (market.confidence === 0) return -1; // Cancelled
+    const now = Date.now() / 1000;
+    if (now - market.settledAt < 3600) return 3; // Dispute Window
+    return 4; // Claims Open
+  };
+
+  const phase = getPhase();
+  const phases = [
+    { label: "Created", step: 0 },
+    { label: "Predictions", step: 1 },
+    { label: "Settlement", step: 2 },
+    { label: "Dispute", step: 3 },
+    { label: "Claims", step: 4 },
+  ];
+
   return (
     <div className="market-detail">
       {/* Back button */}
@@ -59,6 +78,31 @@ export function MarketDetail({ market, marketId, provider, account, onBack, onUp
           <span className="price-tag">Pool: {ethers.formatEther(totalPool)} ETH</span>
         </div>
       </div>
+
+      {/* Lifecycle Timeline */}
+      {phase >= 0 && (
+        <div className="lifecycle-timeline">
+          {phases.map((p, i) => (
+            <div key={i} className="lifecycle-step-wrapper">
+              {i > 0 && (
+                <div className={`lifecycle-line ${p.step <= phase ? "lifecycle-line-active" : ""}`} />
+              )}
+              <div className="lifecycle-step">
+                <div className={`lifecycle-dot ${
+                  p.step < phase ? "lifecycle-dot-done" :
+                  p.step === phase ? "lifecycle-dot-current" :
+                  "lifecycle-dot-pending"
+                }`}>
+                  {p.step < phase ? "✓" : ""}
+                </div>
+                <span className={`lifecycle-label ${p.step === phase ? "lifecycle-label-current" : ""}`}>
+                  {p.label}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Odds Bar */}
       <OddsBar yesPool={market.totalYesPool} noPool={market.totalNoPool} />
