@@ -333,7 +333,7 @@ $ forge test -vvv
 [PASS] test_settle_revertsIfNotExist
 [PASS] test_settle_setsAllFields
 
-# Claims — with Dispute Window (8)
+# Claims — with Dispute Window (10)
 [PASS] test_claim_winnerGetsFullPool
 [PASS] test_claim_proportionalPayout
 [PASS] test_claim_revertsIfNotSettled
