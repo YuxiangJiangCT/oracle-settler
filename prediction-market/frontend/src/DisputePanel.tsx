@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ethers } from "ethers";
 import { PREDICTION_MARKET_ABI, CONTRACT_ADDRESS } from "./contract";
 import type { Market, Dispute } from "./contract";
@@ -19,6 +19,11 @@ export function DisputePanel({ provider, marketId, market, onUpdate }: DisputePa
   const [txStatus, setTxStatus] = useState("");
   const [timeLeft, setTimeLeft] = useState(0);
 
+  // Simulation state
+  const [simulating, setSimulating] = useState(false);
+  const [simStep, setSimStep] = useState(0);
+  const simIntervalRef = useRef<number | null>(null);
+
   useEffect(() => {
     loadDispute();
   }, [marketId]);
@@ -36,6 +41,12 @@ export function DisputePanel({ provider, marketId, market, onUpdate }: DisputePa
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
   }, [market.settledAt, market.settled, market.confidence]);
+
+  useEffect(() => {
+    return () => {
+      if (simIntervalRef.current) clearInterval(simIntervalRef.current);
+    };
+  }, []);
 
   const loadDispute = async () => {
     try {
@@ -58,6 +69,36 @@ export function DisputePanel({ provider, marketId, market, onUpdate }: DisputePa
 
   const hasDispute = dispute && dispute.disputer !== ethers.ZeroAddress;
   const windowOpen = timeLeft > 0;
+
+  // Simulation computed values
+  const simConfidence = market.confidence / 100;
+  const simConfirmed = simConfidence >= 70;
+  const isEventMarket = market.targetPrice === 0n;
+  const outcomeLabel = market.outcome === 0 ? "YES" : "NO";
+  const settledPriceUsd = Number(market.settledPrice) / 1e6;
+
+  const simSteps = [
+    {
+      title: "Dispute Filed",
+      detail: `Disputer stakes ${DISPUTE_STAKE} ETH challenging Market #${marketId} (${outcomeLabel} at ${simConfidence.toFixed(0)}% confidence)`,
+    },
+    {
+      title: "CRE Strict Re-verification",
+      detail: isEventMarket
+        ? "Gemini AI re-querying with strict mode + fresh Google Search grounding"
+        : `Re-fetching from CoinGecko + CoinCap with stricter divergence threshold (<1%). Settled: $${settledPriceUsd.toLocaleString()}`,
+    },
+    {
+      title: "AI Re-analysis (Strict Mode)",
+      detail: `Gemini 2.0 Flash re-evaluating with elevated confidence threshold (70% required vs 50% normal)`,
+    },
+    {
+      title: "Dispute Resolution",
+      detail: simConfirmed
+        ? `Original ${outcomeLabel} settlement CONFIRMED — ${simConfidence.toFixed(0)}% confidence meets 70% strict threshold. Dispute stake forfeited.`
+        : `Settlement OVERTURNED — ${simConfidence.toFixed(0)}% confidence below 70% strict threshold. Outcome may be corrected. Stake refunded.`,
+    },
+  ];
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -91,6 +132,25 @@ export function DisputePanel({ provider, marketId, market, onUpdate }: DisputePa
       setLoading(false);
       setTimeout(() => setTxStatus(""), 6000);
     }
+  };
+
+  const startSimulation = () => {
+    setSimulating(true);
+    setSimStep(0);
+    let step = 0;
+    simIntervalRef.current = window.setInterval(() => {
+      step++;
+      setSimStep(step);
+      if (step >= simSteps.length) {
+        if (simIntervalRef.current) clearInterval(simIntervalRef.current);
+      }
+    }, 700);
+  };
+
+  const closeSimulation = () => {
+    if (simIntervalRef.current) clearInterval(simIntervalRef.current);
+    setSimulating(false);
+    setSimStep(0);
   };
 
   return (
@@ -173,6 +233,58 @@ export function DisputePanel({ provider, marketId, market, onUpdate }: DisputePa
               ? "CRE re-verification found a different result. The outcome has been corrected and the dispute stake was refunded."
               : "CRE re-verification confirmed the original settlement. The dispute stake was forfeited as anti-spam penalty."}
           </p>
+        </div>
+      )}
+
+      {/* Simulate Dispute Button */}
+      <button className="sim-trigger-btn" onClick={startSimulation}>
+        Simulate Dispute
+      </button>
+
+      {/* Simulation Modal */}
+      {simulating && (
+        <div className="sim-overlay" onClick={closeSimulation}>
+          <div className="sim-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="sim-modal-header">
+              <h3>Dispute Simulation</h3>
+              <button className="sim-close" onClick={closeSimulation}>&times;</button>
+            </div>
+            <p className="sim-subtitle">
+              Simulating what happens if someone disputes Market #{marketId}
+            </p>
+
+            <div className="sim-steps">
+              {simSteps.map((s, i) => {
+                const status = i < simStep ? "complete" : i === simStep ? "active" : "pending";
+                return (
+                  <div key={i} className={`sim-step sim-step-${status}`}>
+                    <div className="sim-step-indicator">
+                      <span className={`sim-dot sim-dot-${status}`}>
+                        {status === "complete" ? "\u2713" : (i + 1)}
+                      </span>
+                    </div>
+                    <div className="sim-step-content">
+                      <span className="sim-step-title">{s.title}</span>
+                      {status !== "pending" && (
+                        <p className="sim-step-detail">{s.detail}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {simStep >= simSteps.length && (
+              <div className={`sim-result ${simConfirmed ? "sim-confirmed" : "sim-overturned"}`}>
+                <strong>{simConfirmed ? "Settlement Confirmed" : "Settlement Overturned"}</strong>
+                <p>
+                  {simConfirmed
+                    ? `The original ${outcomeLabel} outcome stands with ${simConfidence.toFixed(0)}% confidence. The disputer's ${DISPUTE_STAKE} ETH stake would be forfeited as anti-spam penalty.`
+                    : `The ${outcomeLabel} outcome would be overturned. The disputer's ${DISPUTE_STAKE} ETH stake would be refunded and the market outcome corrected.`}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
