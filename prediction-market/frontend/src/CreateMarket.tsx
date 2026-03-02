@@ -78,7 +78,7 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
       handleError(err);
     } finally {
       setLoading(false);
-      setTimeout(() => setTxStatus(""), 5000);
+      setTimeout(() => setTxStatus(""), 8000);
     }
   };
 
@@ -110,7 +110,7 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
       handleError(err);
     } finally {
       setLoading(false);
-      setTimeout(() => setTxStatus(""), 5000);
+      setTimeout(() => setTxStatus(""), 8000);
     }
   };
 

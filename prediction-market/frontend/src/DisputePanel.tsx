@@ -144,7 +144,7 @@ export function DisputePanel({ provider, marketId, market, onUpdate }: DisputePa
       if (step >= simSteps.length) {
         if (simIntervalRef.current) clearInterval(simIntervalRef.current);
       }
-    }, 700);
+    }, 1200);
   };
 
   const closeSimulation = () => {

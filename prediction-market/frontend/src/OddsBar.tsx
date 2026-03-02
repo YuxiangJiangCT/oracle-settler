@@ -20,6 +20,22 @@ export function OddsBar({ yesPool, noPool, settled, outcome }: OddsBarProps) {
   const yesWon = settled && outcome === 0;
   const noWon = settled && outcome === 1;
 
+  if (totalPool === 0n) {
+    return (
+      <div className="odds-section">
+        <div className="odds-labels">
+          <span className="pool-total" style={{ width: "100%", textAlign: "center", opacity: 0.5 }}>
+            No predictions yet
+          </span>
+        </div>
+        <div className="odds-bar">
+          <div className="odds-yes" style={{ width: "50%", opacity: 0.3 }} />
+          <div className="odds-no" style={{ width: "50%", opacity: 0.3 }} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="odds-section">
       <div className="odds-labels">

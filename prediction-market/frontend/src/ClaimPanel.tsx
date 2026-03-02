@@ -70,7 +70,7 @@ export function ClaimPanel({ provider, account, marketId, market, onUpdate }: Cl
       }
     } finally {
       setLoading(false);
-      setTimeout(() => setTxStatus(""), 4000);
+      setTimeout(() => setTxStatus(""), 8000);
     }
   };
 

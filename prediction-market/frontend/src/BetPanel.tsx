@@ -43,7 +43,7 @@ export function BetPanel({ provider, marketId, isActive, onUpdate }: BetPanelPro
       }
     } finally {
       setLoading(false);
-      setTimeout(() => setTxStatus(""), 4000);
+      setTimeout(() => setTxStatus(""), 8000);
     }
   };
 

@@ -50,7 +50,7 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
           setIsReplaying(false);
         }, 400);
       }
-    }, 800);
+    }, 1200);
   }, [isEventMarket, settledPriceUsd]);
 
   useEffect(() => {
