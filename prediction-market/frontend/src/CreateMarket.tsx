@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { IDKitWidget, VerificationLevel } from "@worldcoin/idkit";
 import type { ISuccessResult } from "@worldcoin/idkit";
 import { PREDICTION_MARKET_ABI, CONTRACT_ADDRESS } from "./contract";
+import { parseMarketQuestion } from "./aiParser";
 
 const WORLD_ID_APP_ID = "app_e5fb2e27e8b9d3c7ea376b845676f05a";
 const WORLD_ID_ACTION = "create-market";
@@ -20,6 +21,12 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
   const [loading, setLoading] = useState(false);
   const [txStatus, setTxStatus] = useState("");
 
+  // AI Natural Language state
+  const [nlInput, setNlInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiFilledFields, setAiFilledFields] = useState(false);
+
   const presets = [
     { label: "BTC > $100K", question: "Will Bitcoin exceed $100,000?", asset: "bitcoin", price: "100000" },
     { label: "ETH > $5K", question: "Will Ethereum exceed $5,000?", asset: "ethereum", price: "5000" },
@@ -33,6 +40,24 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
   ];
 
   const isFormValid = question && asset && targetPrice;
+
+  const handleAiParse = async () => {
+    if (!nlInput.trim()) return;
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const result = await parseMarketQuestion(nlInput.trim());
+      setQuestion(result.question);
+      setAsset(result.asset);
+      setTargetPrice(result.targetPrice);
+      setAiFilledFields(true);
+      setTimeout(() => setAiFilledFields(false), 1500);
+    } catch (err: any) {
+      setAiError(err.message || "Failed to parse. Try being more specific.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const createMarket = async () => {
     if (!isFormValid) return;
@@ -93,6 +118,7 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
     setQuestion("");
     setAsset("");
     setTargetPrice("");
+    setNlInput("");
   };
 
   const handleError = (err: any) => {
@@ -103,6 +129,9 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
     }
   };
 
+  const fieldClass = (base: string) =>
+    `${base}${aiFilledFields ? " ai-filled" : ""}`;
+
   return (
     <div className="create-market-section">
       <h2 className="section-title">Create Market</h2>
@@ -110,6 +139,30 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
         Deploy a new prediction market on-chain. CRE will automatically settle it using
         CoinGecko price data (price markets) or Gemini AI + Google Search (event markets).
       </p>
+
+      {/* AI Natural Language Input */}
+      <div className="nl-create-section">
+        <label className="field-label">Describe your market in plain English</label>
+        <div className="nl-input-row">
+          <input
+            type="text"
+            className="field-input nl-input"
+            value={nlInput}
+            onChange={(e) => { setNlInput(e.target.value); setAiError(""); }}
+            onKeyDown={(e) => e.key === "Enter" && !aiLoading && handleAiParse()}
+            placeholder="e.g. 'Will Bitcoin hit $150K by June?' or 'Will GPT-5 launch in 2026?'"
+            disabled={aiLoading || loading}
+          />
+          <button
+            className="nl-parse-btn"
+            onClick={handleAiParse}
+            disabled={aiLoading || !nlInput.trim()}
+          >
+            {aiLoading ? "Analyzing..." : "AI Parse"}
+          </button>
+        </div>
+        {aiError && <div className="nl-error">{aiError}</div>}
+      </div>
 
       {/* Presets */}
       <div className="presets">
@@ -157,7 +210,7 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
           <label className="field-label">Question</label>
           <input
             type="text"
-            className="field-input"
+            className={fieldClass("field-input")}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="Will Bitcoin exceed $100,000 by March 2025?"
@@ -170,7 +223,7 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
             <label className="field-label">Asset (CoinGecko ID)</label>
             <input
               type="text"
-              className="field-input"
+              className={fieldClass("field-input")}
               value={asset}
               onChange={(e) => setAsset(e.target.value)}
               placeholder="bitcoin"
@@ -181,7 +234,7 @@ export function CreateMarket({ provider, account, onCreated }: CreateMarketProps
             <label className="field-label">Target Price (USD)</label>
             <input
               type="text"
-              className="field-input"
+              className={fieldClass("field-input")}
               value={targetPrice}
               onChange={(e) => setTargetPrice(e.target.value)}
               placeholder="100000"
