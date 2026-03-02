@@ -170,6 +170,81 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
           <strong>{isEventMarket ? "7" : usedAI ? "8" : "7"}</strong>
         </div>
       </div>
+
+      {/* Settlement Narrative — Audit Trail */}
+      <div className="settlement-narrative">
+        <h4 className="narrative-title">Settlement Report</h4>
+        <div className="narrative-content">
+          {isEventMarket ? (
+            <>
+              <div className="narrative-line">
+                <span className="narrative-label">Market Type</span>
+                <span>Event Market — no price target, resolved via AI judgment</span>
+              </div>
+              <div className="narrative-line">
+                <span className="narrative-label">Query</span>
+                <span>"{market.question}"</span>
+              </div>
+              <div className="narrative-line">
+                <span className="narrative-label">AI Model</span>
+                <span>Gemini 2.0 Flash with Google Search grounding</span>
+              </div>
+              <div className="narrative-line">
+                <span className="narrative-label">Verdict</span>
+                <span className={market.outcome === 0 ? "narrative-yes" : "narrative-no"}>
+                  {outcomeLabel} — {confidence >= 80 ? "high" : confidence >= 60 ? "moderate" : "low"} confidence ({confidence.toFixed(0)}%)
+                </span>
+              </div>
+              <div className="narrative-line">
+                <span className="narrative-label">Process</span>
+                <span>AI searched real-world news sources, analyzed evidence, and produced a verdict with confidence score. CRE multi-node consensus signed the report.</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="narrative-line">
+                <span className="narrative-label">Market Type</span>
+                <span>Price Market — dual-source oracle verification</span>
+              </div>
+              <div className="narrative-line">
+                <span className="narrative-label">Target</span>
+                <span>${targetPriceUsd.toLocaleString()} USD ({market.asset})</span>
+              </div>
+              <div className="narrative-line">
+                <span className="narrative-label">Price Fetched</span>
+                <span>CoinGecko: ${settledPriceUsd.toLocaleString()} | CoinCap: cross-validated</span>
+              </div>
+              <div className="narrative-line">
+                <span className="narrative-label">Source Divergence</span>
+                <span className="narrative-pass">&lt; 2% threshold — sources agree</span>
+              </div>
+              <div className="narrative-line">
+                <span className="narrative-label">Target Delta</span>
+                <span>{priceDiffPercent}% {direction} target ({settledPriceUsd >= targetPriceUsd ? "+" : "-"}${Math.abs(settledPriceUsd - targetPriceUsd).toLocaleString()})</span>
+              </div>
+              <div className="narrative-line">
+                <span className="narrative-label">Resolution</span>
+                <span>
+                  {priceDiff > 0.05
+                    ? `Price is ${priceDiffPercent}% ${direction} target (> 5% threshold) — direct settlement, no AI needed`
+                    : `Price within 5% of target — Gemini AI consulted for nuanced analysis`}
+                </span>
+              </div>
+              <div className="narrative-line">
+                <span className="narrative-label">Outcome</span>
+                <span className={market.outcome === 0 ? "narrative-yes" : "narrative-no"}>
+                  {outcomeLabel} with {confidence.toFixed(0)}% confidence
+                  {confidence === 100 && " (deterministic — clear price threshold)"}
+                  {confidence === 75 && " (capped — single source fallback)"}
+                </span>
+              </div>
+            </>
+          )}
+          <div className="narrative-footer">
+            Settled {new Date(market.settledAt * 1000).toLocaleString()} — CRE signed by multi-node consensus — 1hr dispute window
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -37,6 +37,27 @@ OracleSettler combines **four layers of trust** in a single CRE workflow:
 
 ---
 
+## Why No Backend?
+
+Most prediction markets require a centralized server for market data indexing, price feeds, order matching, and settlement orchestration. **OracleSettler has zero backend infrastructure** — CRE replaces the entire server stack:
+
+| Traditional Stack | OracleSettler | Replaced By |
+|-------------------|---------------|-------------|
+| Express/Node.js server | None | CRE Workflow runtime |
+| WebSocket event streaming | None | On-chain events + frontend polling |
+| Cron job scheduler | None | CRE Cron Trigger (every 6h) |
+| Price feed service | None | CRE Confidential HTTP (CoinGecko + CoinCap) |
+| AI inference endpoint | None | CRE Confidential HTTP (Gemini) |
+| Database for market state | None | Smart contract storage |
+| Event indexer | None | CRE Log Triggers |
+| API authentication | None | CRE KeystoneForwarder signature verification |
+
+**The result**: No servers to maintain, no API keys to rotate, no database to back up, no single point of failure. The entire backend is a CRE workflow running on Chainlink's decentralized oracle network.
+
+This is not a limitation — it's the point. CRE enables **serverless DeFi applications** where the oracle network IS the backend.
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -406,6 +427,7 @@ Suite result: ok. 62 passed; 0 failed; 0 skipped
 | `my-workflow/disputeCallback.ts` | **New** — Dispute re-verification handler | CRE strict mode: re-fetch + 70% confidence threshold |
 | `my-workflow/settlementLogic.ts` | **New** — Dual-source price fetch + event AI + threshold + write | DRY principle across triggers; `writeDisputeResolution()` for dispute reports (0x02 prefix) |
 | `my-workflow/coincapPrice.ts` | **New** — CoinCap price fetcher | Second independent price source for consensus |
+| `my-workflow/trendingMarkets.ts` | **New** — AI-powered auto-market creation | Gemini suggests trending markets, CRE creates them on-chain autonomously |
 | `my-workflow/main.ts` | Added Cron + Dispute trigger registration | Four trigger types: HTTP, Log:Settlement, Log:Dispute, Cron |
 | `my-workflow/httpCallback.ts` | Updated for asset + targetPrice params | Support new market creation schema |
 | `frontend/src/DisputePanel.tsx` | **New** — Dispute UI component | 4-state panel: window countdown, file dispute, active status, resolution display |
@@ -442,8 +464,11 @@ Suite result: ok. 62 passed; 0 failed; 0 skipped
 12. **Resolution**: CRE writes `resolveDispute()` on-chain — either confirms (stake forfeited) or overturns (stake returned, outcome flipped)
 13. **Claims Unlocked**: After dispute window closes (or dispute resolved), winners can call `claim()`
 
-### Auto-Settlement
-14. **Cron Trigger**: Runs every 6 hours to scan and settle any expired markets without manual intervention
+### Auto-Settlement + Auto-Market Creation
+14. **Cron Trigger — Settle**: Runs every 6 hours to scan and settle any expired markets
+15. **Cron Trigger — Create**: After settling, Gemini AI analyzes trending crypto events via Google Search and autonomously creates new prediction markets on-chain
+
+**Fully autonomous loop**: CRE creates markets → users predict → CRE settles → users claim. Zero human intervention from creation to payout.
 
 ---
 
@@ -451,7 +476,7 @@ Suite result: ok. 62 passed; 0 failed; 0 skipped
 
 - **Smart Contract**: Solidity 0.8.24 (Foundry, IR optimizer) — 468 lines, 62 tests
 - **Sybil Resistance**: World ID on-chain verification (Sepolia WorldIDRouter)
-- **CRE Workflow**: TypeScript (Bun + CRE SDK) — 12 capabilities, 4 triggers, 8 modules
+- **CRE Workflow**: TypeScript (Bun + CRE SDK) — 12 capabilities, 4 triggers, 9 modules
 - **Price Oracles**: CoinGecko + CoinCap (dual-source via Confidential HTTP)
 - **AI**: Google Gemini 2.0 Flash (via Confidential HTTP) — price analysis + event judgment
 - **Frontend**: React + TypeScript + Vite + ethers.js v6 + World ID IDKit — 14 components

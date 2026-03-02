@@ -21,6 +21,7 @@ import {
   type Market,
   settleMarket,
 } from "./settlementLogic";
+import { createTrendingMarket } from "./trendingMarkets";
 
 // Fallback expiry: 24 hours after creation (used if deadline == 0)
 const MARKET_EXPIRY_SECONDS = 24 * 60 * 60;
@@ -140,11 +141,50 @@ export function onCronTrigger(runtime: Runtime<Config>, _payload: CronPayload): 
     }
 
     runtime.log(`[Cron] Settled ${settledCount} expired market(s)`);
+
+    // ─────────────────────────────────────────────────────────────
+    // Phase 2: Auto-create trending markets via Gemini AI
+    // ─────────────────────────────────────────────────────────────
+    runtime.log("[Cron] Phase 2: Checking for trending market opportunities...");
+
+    // Count active (unsettled) markets
+    let activeCount = 0;
+    for (let i = 0n; i < totalMarkets; i++) {
+      const callData = encodeFunctionData({
+        abi: GET_MARKET_ABI,
+        functionName: "getMarket",
+        args: [i],
+      });
+      const readResult = evmClient
+        .callContract(runtime, {
+          call: encodeCallMsg({
+            from: zeroAddress,
+            to: evmConfig.marketAddress as `0x${string}`,
+            data: callData,
+          })
+        })
+        .result();
+      const m = decodeFunctionResult({
+        abi: GET_MARKET_ABI,
+        functionName: "getMarket",
+        data: bytesToHex(readResult.data),
+      }) as unknown as Market;
+      if (!m.settled && m.creator !== "0x0000000000000000000000000000000000000000") {
+        activeCount++;
+      }
+    }
+
+    const trendingResult = createTrendingMarket(runtime, activeCount);
+    if (trendingResult) {
+      results.push(trendingResult);
+    }
+
     runtime.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-    return settledCount > 0
-      ? `Settled ${settledCount} markets: ${results.join(", ")}`
-      : "No expired markets to settle";
+    const parts: string[] = [];
+    if (settledCount > 0) parts.push(`Settled ${settledCount} markets`);
+    if (trendingResult) parts.push("Created 1 trending market");
+    return parts.length > 0 ? parts.join(" | ") : "No actions taken";
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
