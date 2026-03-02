@@ -7,11 +7,62 @@ interface SettlementExplorerProps {
 }
 
 export function SettlementExplorer({ market, marketId }: SettlementExplorerProps) {
-  if (!market.settled) return null;
+  // All hooks MUST be before any early return (React Rules of Hooks)
+  const [isReplaying, setIsReplaying] = useState(false);
+  const [visibleStep, setVisibleStep] = useState(0);
+  const [showSummary, setShowSummary] = useState(true);
+  const [priceCounter, setPriceCounter] = useState(0);
+  const intervalRef = useRef<number | null>(null);
 
   const isEventMarket = market.targetPrice === 0n;
-  const targetPriceUsd = Number(market.targetPrice) / 1e6;
   const settledPriceUsd = Number(market.settledPrice) / 1e6;
+
+  const startReplay = useCallback(() => {
+    setIsReplaying(true);
+    setVisibleStep(0);
+    setShowSummary(false);
+    setPriceCounter(0);
+
+    let currentStep = 0;
+    intervalRef.current = window.setInterval(() => {
+      currentStep++;
+      setVisibleStep(currentStep);
+
+      // Animate price counter for step 3 on price markets
+      if (currentStep === 3 && !isEventMarket && settledPriceUsd > 0) {
+        const duration = 600;
+        const startTime = performance.now();
+        const animate = (now: number) => {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+          setPriceCounter(Math.round(settledPriceUsd * eased));
+          if (progress < 1) requestAnimationFrame(animate);
+        };
+        requestAnimationFrame(animate);
+      }
+
+      // 7 steps total — clear when all done
+      if (currentStep >= 7) {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        setTimeout(() => {
+          setShowSummary(true);
+          setIsReplaying(false);
+        }, 400);
+      }
+    }, 800);
+  }, [isEventMarket, settledPriceUsd]);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  // Early return AFTER all hooks
+  if (!market.settled) return null;
+
+  const targetPriceUsd = Number(market.targetPrice) / 1e6;
   const priceDiff = targetPriceUsd > 0
     ? Math.abs(settledPriceUsd - targetPriceUsd) / targetPriceUsd
     : 0;
@@ -20,13 +71,6 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
   const outcomeLabel = market.outcome === 0 ? "YES" : "NO";
   const confidence = market.confidence / 100;
   const direction = settledPriceUsd >= targetPriceUsd ? "above" : "below";
-
-  // Replay animation state
-  const [isReplaying, setIsReplaying] = useState(false);
-  const [visibleStep, setVisibleStep] = useState(0);
-  const [showSummary, setShowSummary] = useState(true);
-  const [priceCounter, setPriceCounter] = useState(0);
-  const intervalRef = useRef<number | null>(null);
 
   const steps = [
     {
@@ -110,47 +154,6 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
       capability: "EVM Write",
     },
   ];
-
-  const startReplay = useCallback(() => {
-    setIsReplaying(true);
-    setVisibleStep(0);
-    setShowSummary(false);
-    setPriceCounter(0);
-
-    let currentStep = 0;
-    intervalRef.current = window.setInterval(() => {
-      currentStep++;
-      setVisibleStep(currentStep);
-
-      // Animate price counter for step 3 on price markets
-      if (currentStep === 3 && !isEventMarket && settledPriceUsd > 0) {
-        const duration = 600;
-        const startTime = performance.now();
-        const animate = (now: number) => {
-          const elapsed = now - startTime;
-          const progress = Math.min(elapsed / duration, 1);
-          const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-          setPriceCounter(Math.round(settledPriceUsd * eased));
-          if (progress < 1) requestAnimationFrame(animate);
-        };
-        requestAnimationFrame(animate);
-      }
-
-      if (currentStep >= steps.length) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-        setTimeout(() => {
-          setShowSummary(true);
-          setIsReplaying(false);
-        }, 400);
-      }
-    }, 800);
-  }, [steps.length, isEventMarket, settledPriceUsd]);
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
 
   const getStepStatus = (stepNum: number) => {
     if (!isReplaying) return "complete";

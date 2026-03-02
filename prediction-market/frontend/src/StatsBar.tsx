@@ -13,11 +13,8 @@ export function StatsBar({ markets }: StatsBarProps) {
   const activeMarkets = totalMarkets - settledMarkets;
 
   let totalVolume = 0n;
-  let totalPredictions = 0;
   for (const m of markets) {
     totalVolume += m.data.totalYesPool + m.data.totalNoPool;
-    if (m.data.totalYesPool > 0n) totalPredictions++;
-    if (m.data.totalNoPool > 0n) totalPredictions++;
   }
 
   const volumeStr = ethers.formatEther(totalVolume);
