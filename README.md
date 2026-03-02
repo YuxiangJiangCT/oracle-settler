@@ -4,6 +4,8 @@ Automated prediction market settlement using **dual-source price verification (C
 
 **Live Frontend**: [oracle-settler.vercel.app](https://oracle-settler.vercel.app)
 
+**Demo Video**: [YouTube](https://youtube.com) *(link to be added after recording)*
+
 ---
 
 ## The Problem
@@ -195,11 +197,11 @@ cast send --rpc-url $RPC --private-key $PK $CONTRACT \
 cast send --rpc-url $RPC --private-key $PK $CONTRACT \
   "requestSettlement(uint256)" 0
 
-# Run CRE workflow to settle (simulation)
+# Simulate CRE workflow settlement locally
 cre workflow simulate my-workflow --non-interactive --trigger-index 1 \
   --evm-tx-hash <SETTLEMENT_TX_HASH> --evm-event-index 0
 
-# Run with broadcast to settle on-chain
+# Simulate and broadcast the signed result on-chain
 cre workflow simulate my-workflow --non-interactive --trigger-index 1 \
   --evm-tx-hash <SETTLEMENT_TX_HASH> --evm-event-index 0 --broadcast
 ```
@@ -208,39 +210,33 @@ cre workflow simulate my-workflow --non-interactive --trigger-index 1 \
 
 ## Demo: Multi-Market Settlement
 
-Three markets deployed on Sepolia demonstrating all resolution paths:
+Eight markets deployed on Sepolia demonstrating all resolution paths:
 
-| Market | Type | Question | Target | Resolution Path |
-|--------|------|----------|--------|----------------|
-| #0 | Price | Will BTC be above $100,000 by March 2026? | $100K | Dual-source price + threshold |
-| #1 | Price | Will ETH exceed $5,000? | $5K | Dual-source price + AI borderline |
-| #2 | Event | Will GPT-5 be released before July 2026? | N/A | Gemini AI + Google Search |
+| Market | Type | Question | Target | Resolution Path | Status |
+|--------|------|----------|--------|----------------|--------|
+| #0 | Price | Will BTC be above $100,000 by March 2026? | $100K | Dual-source price + threshold | Settled |
+| #1 | Price | Will ETH exceed $5,000? | $5K | Dual-source price + AI borderline | Open |
+| #2 | Event | Will GPT-5 be released before July 2026? | N/A | Gemini AI + Google Search | Open |
+| #3 | Price | Will SOL exceed $200 by June 2026? | $200 | Dual-source price | Open |
+| #4 | Price | Will DOGE exceed $0.50 by May 2026? | $0.50 | Dual-source price + AI | Open |
+| #5 | Price | Will LINK exceed $30 by April 2026? | $30 | Dual-source price | Open |
+| #6 | Event | Will Apple announce Vision Pro 2 before WWDC 2026? | N/A | Gemini AI + Google Search | Open |
+| #7 | Price | Will AVAX exceed $50 by July 2026? | $50 | Dual-source price | Open |
 
-**Contract (Sepolia)**: [`0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5`](https://sepolia.etherscan.io/address/0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5)
+**Contract (Sepolia, verified)**: [`0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5`](https://sepolia.etherscan.io/address/0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5)
 
 ---
 
 ## Tenderly Virtual TestNet
 
-Full contract lifecycle deployed and demonstrated on a Tenderly Virtual TestNet (Sepolia fork):
+Contract tested against a Tenderly Virtual TestNet (Sepolia fork) for rapid iteration:
 
 | Resource | Link |
 |----------|------|
 | **Public RPC** | `https://virtual.sepolia.eu.rpc.tenderly.co/03dfcf31-07ae-4204-879a-8f0c2a9ad16f` |
-| **VTestNet Contract** | `0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5` |
-| **Dashboard** | [Tenderly Explorer](https://dashboard.tenderly.co/ryanJ/project/testnet/oracle-settler-sepolia) |
-
-**What's demonstrated:**
-- Contract deployment with World ID + CRE forwarder constructor args
-- 3 markets created (BTC, ETH, SOL) with bets placed
-- Settlement requests emitting `SettlementRequested` events
-- Unlimited ETH via `tenderly_setBalance` for frictionless testing
 
 ```bash
-# Run the demo script
-cd prediction-market && bash scripts/tenderly-demo.sh
-
-# Or interact directly via Public RPC
+# Interact via Tenderly VTestNet fork
 cast call --rpc-url https://virtual.sepolia.eu.rpc.tenderly.co/03dfcf31-07ae-4204-879a-8f0c2a9ad16f \
   0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5 "getNextMarketId()(uint256)"
 ```
@@ -415,6 +411,7 @@ Suite result: ok. 62 passed; 0 failed; 0 skipped
 | `frontend/src/DisputePanel.tsx` | **New** — Dispute UI component | 4-state panel: window countdown, file dispute, active status, resolution display |
 | `frontend/src/SettlementExplorer.tsx` | Updated for event markets | Shows "AI + Search" path for non-price markets |
 | `frontend/src/MarketCard.tsx` | Added dispute window tag | Amber "Dispute Window" badge for recently settled markets |
+| `frontend/src/StatsBar.tsx` | **New** — Platform stats component | Total Markets / Active / Settled / Volume dashboard |
 | `frontend/` | **New** — React + TypeScript + ethers.js + IDKit | Full market UI with Settlement Explorer + Dispute Panel + World ID verification |
 
 ---

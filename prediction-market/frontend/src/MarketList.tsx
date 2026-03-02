@@ -8,6 +8,7 @@ import {
 import type { Market } from "./contract";
 import { MarketCard } from "./MarketCard";
 import { MarketDetail } from "./MarketDetail";
+import { StatsBar } from "./StatsBar";
 
 interface MarketListProps {
   provider: ethers.BrowserProvider | null;
@@ -125,6 +126,7 @@ export function MarketList({ provider, account }: MarketListProps) {
         <h1>Prediction Markets</h1>
         <span className="market-count">{markets.length} market{markets.length !== 1 ? "s" : ""}</span>
       </div>
+      <StatsBar markets={markets} />
       <div className="market-grid">
         {markets.map((m) => (
           <MarketCard
