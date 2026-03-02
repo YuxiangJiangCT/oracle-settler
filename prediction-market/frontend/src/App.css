@@ -547,6 +547,105 @@ body::after {
   margin-top: 4px;
 }
 
+/* ===== ODDS HISTORY CHART ===== */
+.odds-chart-section {
+  margin: 16px 0;
+  padding: 20px 24px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px;
+}
+
+.odds-chart-title {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.odds-chart-subtitle {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.odds-chart-container {
+  width: 100%;
+  height: 240px;
+}
+
+.odds-chart-loading {
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-skeleton {
+  width: 100%;
+  height: 200px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: chartShimmer 1.5s infinite;
+}
+
+@keyframes chartShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.odds-chart-empty {
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  border: 1px dashed rgba(255,255,255,0.08);
+  border-radius: 12px;
+}
+
+/* Chart Tooltip */
+.odds-chart-tooltip {
+  background: rgba(10,14,30,0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.tooltip-time {
+  color: var(--text-secondary);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tooltip-pool {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
 /* ===== SETTLEMENT RESULT ===== */
 .settlement-result {
   display: flex;
