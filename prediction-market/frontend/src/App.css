@@ -1355,6 +1355,78 @@ body::after {
   font-size: 11px;
 }
 
+/* ===== SETTLEMENT REPLAY ===== */
+.replay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  color: var(--accent-secondary);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+  margin-bottom: 16px;
+}
+
+.replay-btn:hover:not(:disabled) {
+  background: rgba(6, 182, 212, 0.2);
+  border-color: var(--accent-secondary);
+}
+
+.replay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.step-dot.pending {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.step-dot.active {
+  background: var(--accent-secondary);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
+  animation: replayPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes replayPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(6, 182, 212, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.8); transform: scale(1.3); }
+}
+
+.step-hidden {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all 0.3s ease-out;
+}
+
+.step-revealing {
+  animation: stepReveal 0.4s ease-out forwards;
+}
+
+@keyframes stepReveal {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.content-hidden {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.explorer-steps.replaying .explorer-step {
+  animation: none;
+}
+
+.summary-revealing {
+  animation: fadeSlideUp 0.5s ease-out;
+}
+
 /* ===== PRICE COMPARISON ===== */
 .comparison-section {
   max-width: 900px;
