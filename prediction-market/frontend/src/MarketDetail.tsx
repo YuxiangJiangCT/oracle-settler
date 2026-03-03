@@ -7,6 +7,7 @@ import { RequestSettlement } from "./RequestSettlement";
 import { SettlementExplorer } from "./SettlementExplorer";
 import { DisputePanel } from "./DisputePanel";
 import { OddsChart } from "./OddsChart";
+import { SettlePreview } from "./SettlePreview";
 
 interface MarketDetailProps {
   market: Market;
@@ -110,6 +111,9 @@ export function MarketDetail({ market, marketId, provider, account, onBack, onUp
 
       {/* Odds History Chart */}
       <OddsChart marketId={marketId} provider={provider} />
+
+      {/* Settle Preview (active markets only) */}
+      <SettlePreview market={market} />
 
       {/* Settlement Result */}
       {market.settled && (
