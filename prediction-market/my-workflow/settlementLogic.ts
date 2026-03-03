@@ -168,7 +168,7 @@ export function readMarket(
 }
 
 /**
- * Fetches current price from CoinGecko + CoinCap (dual-source consensus),
+ * Fetches current price from CoinGecko + CryptoCompare (dual-source consensus),
  * then determines settlement outcome.
  * Returns outcome (0=YES, 1=NO), confidence (0-10000), and settled price in 6 decimals.
  *
@@ -197,7 +197,7 @@ export function determineOutcome(
     throw new Error(`CoinGecko returned no price for ${market.asset}`);
   }
 
-  // Source 2: CoinCap (dual-source consensus)
+  // Source 2: CryptoCompare (dual-source consensus)
   let coinCapPrice: number | null = null;
   try {
     const coinCapResult = httpClient
@@ -209,9 +209,9 @@ export function determineOutcome(
       .result();
 
     coinCapPrice = coinCapResult.price;
-    runtime.log(`  CoinGecko: $${coinGeckoPrice.toLocaleString()} | CoinCap: $${coinCapPrice?.toLocaleString() ?? "N/A"}`);
+    runtime.log(`  CoinGecko: $${coinGeckoPrice.toLocaleString()} | CryptoCompare: $${coinCapPrice?.toLocaleString() ?? "N/A"}`);
   } catch (err) {
-    runtime.log(`  CoinCap unavailable (${err}), proceeding with CoinGecko only`);
+    runtime.log(`  CryptoCompare unavailable (${err}), proceeding with CoinGecko only`);
   }
 
   // Dual-source divergence check
@@ -222,13 +222,13 @@ export function determineOutcome(
     if (sourceDivergence > 0.02) {
       throw new Error(
         `Price sources diverge by ${(sourceDivergence * 100).toFixed(1)}% (>2% threshold). ` +
-        `CoinGecko: $${coinGeckoPrice}, CoinCap: $${coinCapPrice}. ` +
+        `CoinGecko: $${coinGeckoPrice}, CryptoCompare: $${coinCapPrice}. ` +
         `Settlement rejected for safety.`
       );
     }
   }
 
-  // Use CoinGecko as primary (CoinCap is validation only)
+  // Use CoinGecko as primary (CryptoCompare is validation only)
   const currentPriceUsd = coinGeckoPrice;
   const settledPrice6Dec = BigInt(Math.round(currentPriceUsd * 1e6));
   const targetPriceUsd = Number(market.targetPrice) / 1e6;
@@ -267,7 +267,7 @@ export function determineOutcome(
     runtime.log(`  AI: ${parsed.result} (${confidence / 100}% confidence)`);
   }
 
-  // Single-source mode: cap confidence when CoinCap unavailable
+  // Single-source mode: cap confidence when CryptoCompare unavailable
   if (coinCapPrice === null) {
     confidence = Math.min(confidence, 7500);
     runtime.log(`  Single-source mode: confidence capped at ${confidence / 100}%`);

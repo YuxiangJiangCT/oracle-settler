@@ -112,7 +112,7 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
           {
             num: 3,
             title: "Dual-Source Price Fetch",
-            detail: `Confidential HTTP → CoinGecko: $${settledPriceUsd.toLocaleString()} | CoinCap: cross-validated`,
+            detail: `Confidential HTTP → CoinGecko: $${settledPriceUsd.toLocaleString()} | CryptoCompare: cross-validated`,
             capability: "Confidential HTTP (x2)",
           },
           {
@@ -237,7 +237,7 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
           </div>
           <div className="summary-row">
             <span>{isEventMarket ? "Data Source" : "Price Sources"}</span>
-            <strong>{isEventMarket ? "Gemini AI (Google Search grounding)" : "CoinGecko + CoinCap"}</strong>
+            <strong>{isEventMarket ? "Gemini AI (Google Search grounding)" : "CoinGecko + CryptoCompare"}</strong>
           </div>
           <div className="summary-row">
             <span>CRE Capabilities Used</span>
@@ -288,7 +288,7 @@ export function SettlementExplorer({ market, marketId }: SettlementExplorerProps
                 </div>
                 <div className="narrative-line">
                   <span className="narrative-label">Price Fetched</span>
-                  <span>CoinGecko: ${settledPriceUsd.toLocaleString()} | CoinCap: cross-validated</span>
+                  <span>CoinGecko: ${settledPriceUsd.toLocaleString()} | CryptoCompare: cross-validated</span>
                 </div>
                 <div className="narrative-line">
                   <span className="narrative-label">Source Divergence</span>

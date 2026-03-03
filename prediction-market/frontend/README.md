@@ -14,7 +14,7 @@ React + TypeScript + Vite frontend for the OracleSettler prediction market platf
 | **RequestSettlement** | Trigger CRE settlement via on-chain event |
 | **SettlementExplorer** | Step-by-step visualization of CRE settlement process |
 | **DisputePanel** | File disputes with countdown timer and stake management |
-| **PriceComparison** | Dual-source price display (CoinGecko vs CoinCap) |
+| **PriceComparison** | Dual-source price display (CoinGecko vs CryptoCompare) |
 | **CreateMarket** | Market creation form (price markets + event markets) |
 | **About** | Architecture overview, CRE capabilities grid, how it works |
 

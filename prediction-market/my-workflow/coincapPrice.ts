@@ -1,5 +1,5 @@
 // prediction-market/my-workflow/coincapPrice.ts
-// Second price source for dual-source consensus
+// Second price source for dual-source consensus (CryptoCompare)
 
 import {
   ok,
@@ -7,38 +7,36 @@ import {
 } from "@chainlink/cre-sdk";
 import type { Config } from "./settlementLogic";
 
-// CoinGecko ID → CoinCap ID mapping
-const COINGECKO_TO_COINCAP: Record<string, string> = {
-  bitcoin: "bitcoin",
-  ethereum: "ethereum",
-  solana: "solana",
-  cardano: "cardano",
-  dogecoin: "dogecoin",
-  polkadot: "polkadot",
-  avalanche: "avalanche-2",
-  chainlink: "chainlink",
-  matic: "polygon",
-  litecoin: "litecoin",
+// CoinGecko ID → CryptoCompare ticker symbol mapping
+const COINGECKO_TO_SYMBOL: Record<string, string> = {
+  bitcoin: "BTC",
+  ethereum: "ETH",
+  solana: "SOL",
+  cardano: "ADA",
+  dogecoin: "DOGE",
+  polkadot: "DOT",
+  "avalanche-2": "AVAX",
+  chainlink: "LINK",
+  matic: "MATIC",
+  litecoin: "LTC",
 };
 
-interface CoinCapAsset {
-  data: {
-    id: string;
-    priceUsd: string;
-  };
+interface CryptoCompareResponse {
+  USD?: number;
 }
 
 /**
- * Fetches price from CoinCap API (second independent source).
+ * Fetches price from CryptoCompare API (second independent source).
  * Used for dual-source price consensus.
+ * Replaces CoinCap which is no longer reachable.
  */
 export const buildCoinCapRequest =
   (assetId: string) =>
   (sendRequester: HTTPSendRequester, _config: Config): { price: number } => {
-    const coinCapId = COINGECKO_TO_COINCAP[assetId] || assetId;
+    const symbol = COINGECKO_TO_SYMBOL[assetId] || assetId.toUpperCase();
 
     const req = {
-      url: `https://api.coincap.io/v2/assets/${coinCapId}`,
+      url: `https://min-api.cryptocompare.com/data/price?fsym=${symbol}&tsyms=USD`,
       method: "GET" as const,
       headers: {
         "Accept": "application/json",
@@ -53,15 +51,15 @@ export const buildCoinCapRequest =
     const bodyText = new TextDecoder().decode(resp.body);
 
     if (!ok(resp)) {
-      throw new Error(`CoinCap API error: ${resp.statusCode} - ${bodyText}`);
+      throw new Error(`CryptoCompare API error: ${resp.statusCode} - ${bodyText}`);
     }
 
-    const data = JSON.parse(bodyText) as CoinCapAsset;
-    const priceStr = data.data?.priceUsd;
+    const data = JSON.parse(bodyText) as CryptoCompareResponse;
+    const price = data.USD;
 
-    if (!priceStr) {
-      throw new Error(`CoinCap returned no price for ${coinCapId}: ${bodyText}`);
+    if (price === undefined || price === null) {
+      throw new Error(`CryptoCompare returned no price for ${symbol}: ${bodyText}`);
     }
 
-    return { price: parseFloat(priceStr) };
+    return { price };
   };

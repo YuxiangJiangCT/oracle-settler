@@ -54,7 +54,7 @@
 >
 > *(Click "▶ Replay Settlement" — let animation run, narrate lightly as it plays)*
 >
-> "CRE reads the market... fetches BTC price from CoinGecko AND CoinCap... cross-validates — divergence under 2%, sources agree... price is 2.7% below target, within 5% threshold, so Gemini AI is consulted..."
+> "CRE reads the market... fetches BTC price from CoinGecko AND CryptoCompare... cross-validates — divergence under 2%, sources agree... price is 2.7% below target, within 5% threshold, so Gemini AI is consulted..."
 >
 > *(AI thinking animation → verdict)*
 >
@@ -116,7 +116,7 @@
 **Screen**: Navigate to Verification page
 
 **Script**:
-> "The Verification page — price markets show CoinGecko, CoinCap, and CRE settlement side by side with source divergence. Event markets show the AI verdict and confidence score. Any user can independently verify that the settlement was fair."
+> "The Verification page — price markets show CoinGecko, CryptoCompare, and CRE settlement side by side with source divergence. Event markets show the AI verdict and confidence score. Any user can independently verify that the settlement was fair."
 
 ---
 

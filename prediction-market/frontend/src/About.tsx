@@ -6,7 +6,7 @@ export function About() {
     { name: "EVM Read", desc: "Read market data from smart contract" },
     { name: "EVM Write", desc: "Write signed settlement report on-chain" },
     { name: "Confidential HTTP (CoinGecko)", desc: "Primary price oracle" },
-    { name: "Confidential HTTP (CoinCap)", desc: "Secondary price source for dual-source consensus" },
+    { name: "Confidential HTTP (CryptoCompare)", desc: "Secondary price source for dual-source consensus" },
     { name: "Confidential HTTP (Gemini AI)", desc: "AI judgment for borderline cases" },
     { name: "Consensus Aggregation", desc: "Multi-node agreement on settlement data" },
     { name: "Custom Compute", desc: "Price threshold logic + source divergence check" },
@@ -55,7 +55,7 @@ export function About() {
             <span className="about-step-num">4</span>
             <div>
               <strong>Data Verification</strong>
-              <p><strong>Price markets:</strong> CRE fetches from CoinGecko + CoinCap via Confidential HTTP. If sources diverge &gt;2%, settlement is rejected.
+              <p><strong>Price markets:</strong> CRE fetches from CoinGecko + CryptoCompare via Confidential HTTP. If sources diverge &gt;2%, settlement is rejected.
               <br /><strong>Event markets:</strong> CRE routes to Gemini AI with Google Search grounding — the AI researches real-world news and evidence</p>
             </div>
           </div>

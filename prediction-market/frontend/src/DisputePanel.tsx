@@ -86,7 +86,7 @@ export function DisputePanel({ provider, marketId, market, onUpdate }: DisputePa
       title: "CRE Strict Re-verification",
       detail: isEventMarket
         ? "Gemini AI re-querying with strict mode + fresh Google Search grounding"
-        : `Re-fetching from CoinGecko + CoinCap with stricter divergence threshold (<1%). Settled: $${settledPriceUsd.toLocaleString()}`,
+        : `Re-fetching from CoinGecko + CryptoCompare with stricter divergence threshold (<1%). Settled: $${settledPriceUsd.toLocaleString()}`,
     },
     {
       title: "AI Re-analysis (Strict Mode)",

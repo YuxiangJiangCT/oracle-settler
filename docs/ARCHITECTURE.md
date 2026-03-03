@@ -55,12 +55,12 @@ CRE's `writeReport()` `receiver` parameter controls which contract receives the 
 
 ```
 fetch CoinGecko price (Confidential HTTP)
-fetch CoinCap price  (Confidential HTTP)
+fetch CryptoCompare price  (Confidential HTTP)
 
-if |coingecko - coincap| / avg > 2%:
+if |coingecko - cryptocompare| / avg > 2%:
     REJECT (source disagreement — too risky)
 
-avg_price = (coingecko + coincap) / 2
+avg_price = (coingecko + cryptocompare) / 2
 diff = |avg_price - targetPrice| / targetPrice
 
 if diff > 5%:
@@ -80,7 +80,7 @@ For markets with `targetPrice = 0` (event markets):
 
 ```
 CRE detects asset is not a price feed
-→ skip CoinGecko/CoinCap entirely
+→ skip CoinGecko/CryptoCompare entirely
 → call Gemini AI with Google Search grounding
 → AI researches real-world news/evidence
 → returns YES/NO + confidence score
@@ -143,7 +143,7 @@ CRE Log Trigger fires:
 | 6 | Read | EVM Read (Market) | settlementLogic.ts |
 | 7 | Write | EVM Write (Settlement) | settlementLogic.ts |
 | 8 | HTTP | Confidential HTTP (CoinGecko) | settlementLogic.ts |
-| 9 | HTTP | Confidential HTTP (CoinCap) | coincapPrice.ts |
+| 9 | HTTP | Confidential HTTP (CryptoCompare) | cryptocomparePrice.ts |
 | 10 | HTTP | Confidential HTTP (Gemini AI) | settlementLogic.ts |
 | 11 | Compute | Custom Compute (threshold) | settlementLogic.ts |
 | 12 | Compute | Strict Compute (dispute 70%) | disputeCallback.ts |

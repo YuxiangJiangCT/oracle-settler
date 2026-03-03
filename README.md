@@ -1,6 +1,6 @@
 # OracleSettler: Real-Data + AI Prediction Market Resolution on CRE
 
-Automated prediction market settlement using **dual-source price verification (CoinGecko + CoinCap)**, **AI judgment from Gemini**, **event market resolution**, **dispute arbitration**, **cross-contract parlay settlement**, and **Chainlink Runtime Environment (CRE)** for trustless, on-chain execution.
+Automated prediction market settlement using **dual-source price verification (CoinGecko + CryptoCompare)**, **AI judgment from Gemini**, **event market resolution**, **dispute arbitration**, **cross-contract parlay settlement**, and **Chainlink Runtime Environment (CRE)** for trustless, on-chain execution.
 
 **Live Frontend**: [oracle-settler.vercel.app](https://oracle-settler.vercel.app)
 
@@ -23,7 +23,7 @@ Prediction markets today face a **resolution bottleneck**:
 
 OracleSettler combines **four layers of trust** in a single CRE workflow:
 
-1. **Dual-source price consensus** — CoinGecko + CoinCap cross-validated (>2% divergence = reject)
+1. **Dual-source price consensus** — CoinGecko + CryptoCompare cross-validated (>2% divergence = reject)
 2. **Two-tier resolution** — >5% price diff = instant settlement; <5% = Gemini AI with confidence scoring
 3. **Event markets** — Non-price questions (e.g., "Will GPT-5 launch?") resolved via Gemini AI + Google Search
 4. **Dispute arbitration** — 1-hour challenge window after settlement; CRE strict re-verification with 70% confidence threshold
@@ -46,7 +46,7 @@ Most prediction markets require a centralized server for market data indexing, p
 | Express/Node.js server | None | CRE Workflow runtime |
 | WebSocket event streaming | None | On-chain events + frontend polling |
 | Cron job scheduler | None | CRE Cron Trigger (every 6h) |
-| Price feed service | None | CRE Confidential HTTP (CoinGecko + CoinCap) |
+| Price feed service | None | CRE Confidential HTTP (CoinGecko + CryptoCompare) |
 | AI inference endpoint | None | CRE Confidential HTTP (Gemini) |
 | Database for market state | None | Smart contract storage |
 | Event indexer | None | CRE Log Triggers |
@@ -67,7 +67,7 @@ flowchart TD
     CRON["Cron Trigger<br/>(Every 6h)"] --> READ
     READ --> TYPE{"Price or<br/>Event Market?"}
     TYPE -- "Price" --> CG["CoinGecko<br/>(Primary Price)"]
-    TYPE -- "Price" --> CC["CoinCap<br/>(Secondary Price)"]
+    TYPE -- "Price" --> CC["CryptoCompare<br/>(Secondary Price)"]
     TYPE -- "Event" --> AI2["Gemini AI<br/>+ Google Search"]
     CG & CC --> DIV{"Sources<br/>diverge >2%?"}
     DIV -- "Yes" --> REJECT["❌ Reject<br/>Settlement"]
@@ -140,7 +140,7 @@ The React frontend provides a full prediction market experience:
 - **Market Detail**: Place YES/NO predictions, request settlements, claim winnings
 - **Settlement Explorer**: Step-by-step visualization of how CRE settled each market (price vs event path)
 - **Dispute Panel**: File disputes during 1-hour window, track re-verification status, view resolution outcomes
-- **Price Comparison**: Cross-platform verification (CRE vs CoinGecko vs CoinCap live)
+- **Price Comparison**: Cross-platform verification (CRE vs CoinGecko vs CryptoCompare live)
 - **Create Market**: Deploy new prediction markets — both price targets and free-form event questions
 - **Parlays**: Combine 2-5 market predictions into combo bets with multiplied odds, CRE cross-contract settlement
 - **Event Markets**: "Event Market" badge for non-price questions resolved via AI
@@ -322,7 +322,7 @@ Settled markets enter a **1-hour dispute window** before claims are unlocked:
 | 5 | **EVM Read** | Read market data (asset, targetPrice, pools, dispute state) |
 | 6 | **EVM Write** | Write signed settlement/dispute report to contract |
 | 7 | **Confidential HTTP (CoinGecko)** | Primary price oracle (API key in WASM) |
-| 8 | **Confidential HTTP (CoinCap)** | Secondary price oracle for dual-source consensus |
+| 8 | **Confidential HTTP (CryptoCompare)** | Secondary price oracle for dual-source consensus |
 | 9 | **Confidential HTTP (Gemini AI)** | AI judgment for borderline + event markets |
 | 10 | **Consensus Aggregation** | Multi-node agreement on price data |
 | 11 | **Custom Compute** | Price threshold logic + source divergence check |
@@ -476,7 +476,7 @@ Ran 3 test suites: 84 tests passed, 0 failed, 0 skipped
 | `my-workflow/cronCallback.ts` | **New** — Scheduled market scanner | Auto-settle expired markets without manual intervention |
 | `my-workflow/disputeCallback.ts` | **New** — Dispute re-verification handler | CRE strict mode: re-fetch + 70% confidence threshold |
 | `my-workflow/settlementLogic.ts` | **New** — Dual-source price fetch + event AI + threshold + write | DRY principle across triggers; `writeDisputeResolution()` for dispute reports (0x02 prefix) |
-| `my-workflow/coincapPrice.ts` | **New** — CoinCap price fetcher | Second independent price source for consensus |
+| `my-workflow/coincapPrice.ts` | **New** — CryptoCompare price fetcher | Second independent price source for consensus |
 | `my-workflow/trendingMarkets.ts` | **New** — AI-powered auto-market creation | Gemini suggests trending markets, CRE creates them on-chain autonomously |
 | `contracts/src/ParlayEngine.sol` | **New** — Cross-contract parlay engine (282 lines) | Combo bets on 2-5 markets, house pool model, CRE 0x03 settlement |
 | `contracts/test/ParlayEngine.t.sol` | **New** — 22 Foundry tests | Parlay creation, settlement, claims, edge cases |
@@ -499,7 +499,7 @@ Ran 3 test suites: 84 tests passed, 0 failed, 0 skipped
 2. **Prediction**: Users bet YES or NO by sending ETH to `predict(marketId, prediction)`
 3. **Settlement Request**: Anyone calls `requestSettlement(marketId)` which emits a `SettlementRequested` event
 4. **CRE Catches Event**: The Log Trigger picks up the event and initiates settlement
-5. **Dual-Source Price Fetch**: CRE fetches from CoinGecko AND CoinCap via Confidential HTTP
+5. **Dual-Source Price Fetch**: CRE fetches from CoinGecko AND CryptoCompare via Confidential HTTP
 6. **Source Consensus**: If sources diverge >2%, settlement is rejected for safety
 7. **Outcome Determination**:
    - If price is >5% away from target: instant settlement (no AI needed)
@@ -540,7 +540,7 @@ Ran 3 test suites: 84 tests passed, 0 failed, 0 skipped
 | **Smart Contracts** | Solidity 0.8.24 (Foundry) | PredictionMarket (468 lines) + ParlayEngine (282 lines), 84 tests |
 | **Sybil Resistance** | World ID | ZK proof verification via Sepolia WorldIDRouter |
 | **CRE Workflow** | TypeScript (Bun + CRE SDK) | 16 capabilities, 5 triggers, 10 modules |
-| **Price Oracles** | CoinGecko + CoinCap | Dual-source via Confidential HTTP |
+| **Price Oracles** | CoinGecko + CryptoCompare | Dual-source via Confidential HTTP |
 | **AI** | Google Gemini 2.0 Flash | Price analysis + event judgment via Confidential HTTP |
 | **Frontend** | React + TypeScript + Vite + ethers.js v6 | 15 components including ParlayPage |
 | **Network** | Ethereum Sepolia | CRE Forwarder: `0x15fc6ae953e024d975e77382eeec56a9101f9f88` |
