@@ -8,6 +8,7 @@ import { SettlementExplorer } from "./SettlementExplorer";
 import { DisputePanel } from "./DisputePanel";
 import { OddsChart } from "./OddsChart";
 import { SettlePreview } from "./SettlePreview";
+import { AIAdvisor } from "./AIAdvisor";
 
 interface MarketDetailProps {
   market: Market;
@@ -114,6 +115,9 @@ export function MarketDetail({ market, marketId, provider, account, onBack, onUp
 
       {/* Settle Preview (active markets only) */}
       <SettlePreview market={market} />
+
+      {/* AI Market Advisor (active markets only) */}
+      <AIAdvisor market={market} />
 
       {/* Settlement Result */}
       {market.settled && (

@@ -1953,6 +1953,244 @@ body::after {
   margin-top: 12px;
 }
 
+/* ===== AI ADVISOR ===== */
+.ai-advisor {
+  background: rgba(16, 20, 36, 0.6);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  margin: 20px auto;
+  max-width: 700px;
+}
+
+.advisor-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #c084fc;
+  margin: 0 0 4px 0;
+}
+
+.advisor-subtitle {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0 0 16px 0;
+}
+
+.advisor-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 12px 32px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #a855f7, #7c3aed);
+  color: white;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.advisor-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.4);
+}
+
+.pulse-advisor {
+  animation: advisorPulse 2.5s ease-in-out infinite;
+}
+@keyframes advisorPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+  50% { box-shadow: 0 0 0 10px rgba(168, 85, 247, 0); }
+}
+
+/* Loading */
+.advisor-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+}
+.advisor-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(168, 85, 247, 0.3);
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Error */
+.advisor-error {
+  text-align: center;
+  padding: 12px;
+  color: #f87171;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.advisor-retry-btn {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: block;
+  margin: 12px auto 0;
+}
+.advisor-retry-btn:hover {
+  background: rgba(168, 85, 247, 0.3);
+}
+
+/* Result */
+.advisor-result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Recommendation Badge */
+.advisor-recommendation {
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 10px;
+  border-radius: 10px;
+}
+.rec-bet-yes {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.rec-bet-no {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.rec-hold {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+/* Edge Comparison Bars */
+.edge-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.edge-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.edge-bar-label {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+  width: 90px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.edge-bar-track {
+  flex: 1;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.edge-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.6s ease-out;
+}
+.edge-bar-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  width: 55px;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+/* Edge Indicator */
+.edge-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+.edge-positive {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+.edge-negative {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+.edge-neutral {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+.edge-label {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+}
+.edge-value {
+  font-weight: 700;
+}
+.edge-positive .edge-value { color: #22c55e; }
+.edge-negative .edge-value { color: #ef4444; }
+.edge-neutral .edge-value { color: #94a3b8; }
+
+/* Risk Badge */
+.advisor-risk {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.risk-label {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+.risk-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Reasoning */
+.advisor-reasoning {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  margin: 0;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border-left: 3px solid rgba(168, 85, 247, 0.4);
+}
+
+/* Source Tag */
+.advisor-source-tag {
+  font-size: 0.68rem;
+  color: rgba(168, 85, 247, 0.5);
+  text-align: center;
+}
+
 /* ===== PRICE COMPARISON ===== */
 .comparison-section {
   max-width: 900px;
