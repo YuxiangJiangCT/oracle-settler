@@ -94,12 +94,12 @@
 
 ---
 
-## CROSS-PLATFORM VERIFICATION (3:00 - 3:15)
+## SETTLEMENT VERIFICATION (3:00 - 3:15)
 
-**Screen**: Navigate to Compare page
+**Screen**: Navigate to Verification page
 
 **Script**:
-> "The Compare page — CoinGecko price, CoinCap price, CRE's settled price, all side by side with source divergence. Any user can independently verify that the settlement was fair."
+> "The Verification page — price markets show CoinGecko, CoinCap, and CRE settlement side by side with source divergence. Event markets show the AI verdict and confidence score. Any user can independently verify that the settlement was fair."
 
 ---
 

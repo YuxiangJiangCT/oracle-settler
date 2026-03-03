@@ -30,7 +30,7 @@ export function About() {
             <span className="about-step-num">1</span>
             <div>
               <strong>Create Market</strong>
-              <p>Specify a question, asset (e.g. "bitcoin"), and target price</p>
+              <p>Two types: <strong>Price markets</strong> (asset + target price, e.g. "Will BTC hit $100K?") or <strong>Event markets</strong> (real-world yes/no questions, e.g. "Will GPT-5 be released?")</p>
             </div>
           </div>
           <div className="about-step">
@@ -44,21 +44,23 @@ export function About() {
             <span className="about-step-num">3</span>
             <div>
               <strong>Request Settlement</strong>
-              <p>Anyone can trigger CRE to settle the market</p>
+              <p>Settlement is permissionless by design — anyone can trigger it, but only CRE determines the outcome. The caller cannot influence the result. This eliminates admin-only resolution as a single point of failure</p>
             </div>
           </div>
           <div className="about-step">
             <span className="about-step-num">4</span>
             <div>
-              <strong>Dual-Source Price Fetch</strong>
-              <p>CRE fetches from CoinGecko + CoinCap via Confidential HTTP. If sources diverge &gt;2%, settlement is rejected</p>
+              <strong>Data Verification</strong>
+              <p><strong>Price markets:</strong> CRE fetches from CoinGecko + CoinCap via Confidential HTTP. If sources diverge &gt;2%, settlement is rejected.
+              <br /><strong>Event markets:</strong> CRE routes to Gemini AI with Google Search grounding — the AI researches real-world news and evidence</p>
             </div>
           </div>
           <div className="about-step">
             <span className="about-step-num">5</span>
             <div>
               <strong>Outcome Determination</strong>
-              <p>&gt;5% from target = instant settlement. &lt;5% = Gemini AI provides nuanced judgment</p>
+              <p><strong>Price markets:</strong> &gt;5% from target = instant settlement. &lt;5% = Gemini AI provides nuanced judgment.
+              <br /><strong>Event markets:</strong> Gemini AI returns YES or NO with a confidence score based on search-grounded evidence</p>
             </div>
           </div>
           <div className="about-step">
@@ -125,11 +127,21 @@ export function About() {
             </p>
           </div>
           <div className="innovation-card">
-            <h4>Settlement Explorer</h4>
+            <h4>Event Market Resolution</h4>
             <p>
-              Every settlement is fully transparent. The Settlement Explorer shows
-              exactly which CRE capabilities were used, what prices were fetched,
-              and how the outcome was determined.
+              For markets without price feeds (e.g. "Will GPT-5 be released?"), CRE
+              routes to a completely different pipeline — Gemini AI with Google Search
+              grounding. The AI researches real-world news and returns YES or NO with
+              a confidence score. Same trustless CRE pipeline, different data sources.
+            </p>
+          </div>
+          <div className="innovation-card">
+            <h4>Permissionless Settlement</h4>
+            <p>
+              Anyone can trigger settlement — the caller only initiates the CRE workflow,
+              they cannot influence the outcome. CRE runs on Chainlink's decentralized
+              oracle network, so the result is determined by consensus, not by whoever
+              clicks the button. This eliminates admin-only resolution as a single point of failure.
             </p>
           </div>
           <div className="innovation-card">
