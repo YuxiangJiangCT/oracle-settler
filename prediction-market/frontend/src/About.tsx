@@ -12,6 +12,10 @@ export function About() {
     { name: "Custom Compute", desc: "Price threshold logic + source divergence check" },
     { name: "Log Trigger (Dispute)", desc: "Dispute-filed event triggers strict re-verification" },
     { name: "Strict Compute", desc: "Dispute re-verification with 70% confidence threshold" },
+    { name: "Log Trigger (Parlay)", desc: "ParlaySettlementRequested event triggers cross-contract settlement" },
+    { name: "EVM Read (Parlay State)", desc: "Read parlay + legs from ParlayEngine contract" },
+    { name: "EVM Read (Cross-Contract)", desc: "Read each leg's market outcome from PredictionMarket" },
+    { name: "EVM Write (Parlay Report)", desc: "Write 0x03 settlement report to ParlayEngine" },
   ];
 
   return (
@@ -91,7 +95,7 @@ export function About() {
       <div className="about-section">
         <h3>CRE Capabilities Used</h3>
         <p className="about-section-desc">
-          OracleSettler leverages 12 distinct Chainlink CRE capabilities across 4 trigger types.
+          OracleSettler leverages 16 distinct Chainlink CRE capabilities across 5 trigger types.
         </p>
         <div className="capabilities-grid">
           {capabilities.map((cap, i) => (
@@ -150,6 +154,15 @@ export function About() {
               After settlement, a 1-hour dispute window allows anyone to challenge
               the outcome by staking ETH. CRE re-verifies with a stricter 70%
               confidence threshold — ensuring fair, decentralized arbitration.
+            </p>
+          </div>
+          <div className="innovation-card">
+            <h4>Cross-Contract Parlay Settlement</h4>
+            <p>
+              Combine 2-5 market predictions into a single combo bet with multiplied odds.
+              CRE orchestrates across two contracts — reading outcomes from PredictionMarket,
+              verifying all disputes are resolved, and writing settlement reports to ParlayEngine.
+              Fully autonomous cross-contract orchestration.
             </p>
           </div>
         </div>

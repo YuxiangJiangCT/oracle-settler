@@ -1,4 +1,4 @@
-# OracleSettler Demo Video Script — FINAL (~4.5 min)
+# OracleSettler Demo Video Script — FINAL (~4.5 min, 16 CRE capabilities)
 
 ## HOOK (0:00 - 0:20)
 
@@ -24,7 +24,7 @@
 >
 > *(Quick click to About page, flash CRE capabilities grid)*
 >
-> "12 CRE capabilities, 4 trigger types."
+> "16 CRE capabilities, 5 trigger types — including cross-contract parlay orchestration."
 
 ---
 
@@ -94,7 +94,24 @@
 
 ---
 
-## SETTLEMENT VERIFICATION (3:00 - 3:15)
+## PARLAY — CROSS-CONTRACT ORCHESTRATION (3:00 - 3:30) ⭐
+
+**Screen**: Navigate to Parlays tab
+
+**Script**:
+> "Now the most advanced CRE feature — parlays. Combine 2 to 5 market predictions into a single combo bet with multiplied odds."
+>
+> *(Show Parlay Builder — select BTC YES, ETH NO, SOL YES)*
+>
+> "Select three markets, pick your directions — the combined multiplier updates in real-time. This is a house-pool model: your stake goes into ParlayEngine, and if all legs hit, you get the multiplied payout."
+>
+> *(Point to My Parlays section — show a settled parlay)*
+>
+> "Here's the key: settlement requires CRE to orchestrate across two contracts. It reads parlay state from ParlayEngine, then cross-reads each leg's outcome from PredictionMarket, verifies all disputes are resolved, and writes a settlement report back to ParlayEngine. Contract A reads, Contract B writes — fully autonomous, zero human intervention."
+
+---
+
+## SETTLEMENT VERIFICATION (3:30 - 3:45)
 
 **Screen**: Navigate to Verification page
 
@@ -103,32 +120,32 @@
 
 ---
 
-## WORLD ID + CODE (3:15 - 3:45)
+## WORLD ID + CODE (3:45 - 4:15)
 
-### World ID (3:15 - 3:25)
+### World ID (3:45 - 3:55)
 
 **Screen**: Create page, show World ID button
 
 **Script**:
 > "Market creation supports World ID — zero-knowledge proof of unique humanness. Sybil resistance without sacrificing privacy."
 
-### Quick Code Flash (3:25 - 3:45)
+### Quick Code Flash (3:55 - 4:15)
 
 **Screen**: Quick cuts — contract + workflow + terminal
 
 **Script**:
-> "468-line Solidity contract. `_processReport` routes CRE reports by prefix byte — `0x00` creates, `0x01` settles, `0x02` resolves disputes. 62 Foundry tests, all passing."
+> "Two Solidity contracts — PredictionMarket and ParlayEngine. `_processReport` routes CRE reports by prefix byte — `0x00` creates, `0x01` settles, `0x02` resolves disputes, `0x03` settles parlays. 84 Foundry tests, all passing."
 
 ---
 
-## CLOSE (3:45 - 4:10)
+## CLOSE (4:15 - 4:30)
 
 **Screen**: Markets page with all 8 markets visible
 
 **Script**:
-> "OracleSettler — trustless prediction markets with three resolution paths: dual-source price consensus, AI event judgment, and dispute arbitration."
+> "OracleSettler — trustless prediction markets with four resolution paths: dual-source price consensus, AI event judgment, dispute arbitration, and cross-contract parlay settlement."
 >
-> "12 CRE capabilities. 4 triggers. 62 tests. 8 live markets. Zero backend servers."
+> "16 CRE capabilities. 5 triggers. 84 tests. 8 live markets. Zero backend servers."
 >
 > "No Express. No PostgreSQL. No cron jobs. The entire backend is a CRE workflow running on Chainlink's decentralized oracle network."
 >
@@ -148,9 +165,10 @@
 - **Recording tool**: QuickTime / Loom / OBS
 - **Audio**: Clear voiceover, minimal background noise. Optional subtle lo-fi during intro/outro only.
 - **Upload**: YouTube unlisted → update README + hackathon submission
-- **Target**: ~4-4.5 minutes
-- **The 4 moments judges will remember**:
+- **Target**: ~4.5 minutes
+- **The 5 moments judges will remember**:
   1. "will dogecoin hit a dollar" → AI auto-fills (0:50)
   2. Settlement Replay animation (1:15)
   3. Dispute simulation (2:25)
-  4. "Zero backend" closing punch (3:45)
+  4. Parlay cross-contract orchestration (3:00)
+  5. "Zero backend" closing punch (4:15)
