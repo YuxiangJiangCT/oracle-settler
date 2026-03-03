@@ -79,7 +79,7 @@ export interface Dispute {
 // ParlayEngine
 // ===========================
 
-export const PARLAY_ENGINE_ADDRESS = "0x0000000000000000000000000000000000000000"; // Updated after deployment
+export const PARLAY_ENGINE_ADDRESS = "0x698189C348fE75Cd288F89De021811Ff04b7dC2B";
 
 export const PARLAY_ENGINE_ABI = [
   // Read
