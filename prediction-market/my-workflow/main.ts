@@ -6,12 +6,14 @@ import { onHttpTrigger } from "./httpCallback";
 import { onLogTrigger } from "./logCallback";
 import { onCronTrigger } from "./cronCallback";
 import { onDisputeTrigger } from "./disputeCallback";
+import { onParlayTrigger } from "./parlayCallback";
 
 // Config type (matches config.staging.json structure)
 type Config = {
   geminiModel: string;
   evms: Array<{
     marketAddress: string;
+    parlayAddress?: string;
     chainSelectorName: string;
     gasLimit: string;
   }>;
@@ -19,6 +21,7 @@ type Config = {
 
 const SETTLEMENT_REQUESTED_SIGNATURE = "SettlementRequested(uint256,string)";
 const DISPUTE_FILED_SIGNATURE = "DisputeFiled(uint256,address,uint256)";
+const PARLAY_SETTLEMENT_SIGNATURE = "ParlaySettlementRequested(uint256)";
 
 const initWorkflow = (config: Config) => {
   // Initialize HTTP capability
@@ -43,7 +46,7 @@ const initWorkflow = (config: Config) => {
   // Initialize Cron capability for scheduled auto-settlement
   const cronCapability = new cre.capabilities.CronCapability();
 
-  return [
+  const handlers = [
     // HTTP Trigger - Market Creation via webhook
     cre.handler(httpTrigger, onHttpTrigger),
 
@@ -73,6 +76,23 @@ const initWorkflow = (config: Config) => {
       onCronTrigger
     ),
   ];
+
+  // Log Trigger - Parlay Settlement (cross-contract orchestration)
+  if (config.evms[0].parlayAddress) {
+    const parlayEventHash = keccak256(toHex(PARLAY_SETTLEMENT_SIGNATURE));
+    handlers.push(
+      cre.handler(
+        evmClient.logTrigger({
+          addresses: [config.evms[0].parlayAddress],
+          topics: [{ values: [parlayEventHash] }],
+          confidence: "CONFIDENCE_LEVEL_FINALIZED",
+        }),
+        onParlayTrigger
+      )
+    );
+  }
+
+  return handlers;
 };
 
 export async function main() {

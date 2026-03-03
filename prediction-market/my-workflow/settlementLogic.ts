@@ -44,6 +44,7 @@ export type Config = {
   geminiModel: string;
   evms: Array<{
     marketAddress: string;
+    parlayAddress?: string;
     chainSelectorName: string;
     gasLimit: string;
   }>;
