@@ -172,3 +172,28 @@
   3. Dispute simulation (2:25)
   4. Parlay cross-contract orchestration (3:00)
   5. "Zero backend" closing punch (4:15)
+
+---
+
+## Likely Q&A (Prepare These)
+
+**Q1: "Can't someone just read the settlement report data before it's written on-chain and front-run it?"**
+
+> No. CRE reports are signed by multi-node consensus via KeystoneForwarder. The `_processReport` function verifies the CRE signature — only the registered forwarder address can submit reports. An attacker can see the pending transaction, but they can't forge a settlement report because they don't control the CRE oracle network. And predictions are locked before settlement starts, so knowing the outcome early doesn't help.
+
+**Q2: "Why two price sources instead of just Chainlink Data Feeds?"**
+
+> Two reasons. First, CRE is designed for custom workflows — we wanted to demonstrate Confidential HTTP fetching real-world APIs, which is a differentiated CRE capability that Data Feeds don't showcase. Second, the dual-source consensus pattern (reject if >2% divergence) is more robust for arbitrary assets — we support any CoinGecko-listed asset, not just assets with Chainlink feeds. The divergence check itself is a safety mechanism that doesn't exist in single-feed systems.
+
+**Q3: "The parlay settlement reads from two different contracts — what if the PredictionMarket state changes between reads?"**
+
+> CRE workflow execution is atomic within a single invocation. All `callContract` reads happen in the same block context. So the PredictionMarket state CRE reads is consistent. Additionally, ParlayEngine's `_settleParlay` does an on-chain re-check — it verifies all leg markets are actually settled before accepting the CRE report. Even if CRE somehow got stale data, the contract-level guard catches it.
+
+---
+
+## Fallback Plan
+
+If Sepolia RPC is down during recording:
+- Frontend has **mock data fallback** — shows cached market data with amber banner
+- Pre-record a backup clip of the live demo (screen recording of full flow working)
+- Settlement Explorer and Dispute Simulator are client-side animations, they work without RPC

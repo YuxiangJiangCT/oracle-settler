@@ -9,6 +9,7 @@ import type { Market } from "./contract";
 import { MarketCard } from "./MarketCard";
 import { MarketDetail } from "./MarketDetail";
 import { StatsBar } from "./StatsBar";
+import { MOCK_MARKETS } from "./mockData";
 
 interface MarketListProps {
   provider: ethers.BrowserProvider | null;
@@ -18,7 +19,7 @@ interface MarketListProps {
 export function MarketList({ provider, account }: MarketListProps) {
   const [markets, setMarkets] = useState<{ id: number; data: Market }[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [usingMockData, setUsingMockData] = useState(false);
   const [selectedMarketId, setSelectedMarketId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export function MarketList({ provider, account }: MarketListProps) {
 
   const loadMarkets = async () => {
     setLoading(true);
-    setError(null);
+    setUsingMockData(false);
 
     try {
       const rpcProvider =
@@ -72,8 +73,9 @@ export function MarketList({ provider, account }: MarketListProps) {
 
       setMarkets(loaded);
     } catch (err: any) {
-      console.error("Failed to load markets:", err);
-      setError(err.message || "Failed to load markets");
+      console.error("Failed to load markets, falling back to cached data:", err);
+      setMarkets(MOCK_MARKETS);
+      setUsingMockData(true);
     } finally {
       setLoading(false);
     }
@@ -105,18 +107,7 @@ export function MarketList({ provider, account }: MarketListProps) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="loading-state">
-        <p>Error: {error}</p>
-        <button className="connect-btn" onClick={loadMarkets} style={{ marginTop: 16 }}>
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  if (markets.length === 0) {
+  if (markets.length === 0 && !loading) {
     return <div className="no-markets">No markets found on-chain</div>;
   }
 
@@ -126,6 +117,12 @@ export function MarketList({ provider, account }: MarketListProps) {
         <h1>Prediction Markets</h1>
         <span className="market-count">{markets.length} market{markets.length !== 1 ? "s" : ""}</span>
       </div>
+      {usingMockData && (
+        <div className="mock-data-banner">
+          RPC unavailable — showing cached market data.{" "}
+          <button onClick={loadMarkets} className="mock-retry-btn">Retry</button>
+        </div>
+      )}
       <StatsBar markets={markets} />
       <div className="market-grid">
         {markets.map((m) => (

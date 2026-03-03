@@ -1,6 +1,6 @@
 # OracleSettler: Real-Data + AI Prediction Market Resolution on CRE
 
-Automated prediction market settlement using **dual-source price verification (CoinGecko + CoinCap)**, **AI judgment from Gemini**, **event market resolution**, **dispute arbitration**, and **Chainlink Runtime Environment (CRE)** for trustless, on-chain execution.
+Automated prediction market settlement using **dual-source price verification (CoinGecko + CoinCap)**, **AI judgment from Gemini**, **event market resolution**, **dispute arbitration**, **cross-contract parlay settlement**, and **Chainlink Runtime Environment (CRE)** for trustless, on-chain execution.
 
 **Live Frontend**: [oracle-settler.vercel.app](https://oracle-settler.vercel.app)
 
@@ -32,7 +32,7 @@ OracleSettler combines **four layers of trust** in a single CRE workflow:
 ### Who Benefits
 
 - **Users**: Trustless settlement with dispute recourse — wrong outcomes can be challenged and overturned
-- **Chainlink**: Real-world CRE use case demonstrating 12 capabilities in production
+- **Chainlink**: Real-world CRE use case demonstrating 16 capabilities across 5 triggers in production
 - **Developers**: Reference implementation for building CRE-powered DeFi applications
 
 ---
@@ -83,12 +83,23 @@ flowchart TD
     STRICT --> RESOLVE["EVM Write<br/>resolveDispute()"]
     RESOLVE --> CLAIM
 
+    subgraph Parlay["Cross-Contract Orchestration"]
+        PLOG["Log Trigger<br/>(ParlaySettlement)"] --> PREAD["EVM Read<br/>(ParlayEngine)"]
+        PREAD --> XREAD["Cross-Read<br/>(PredictionMarket × N legs)"]
+        XREAD --> PVERIFY{"All legs<br/>settled?"}
+        PVERIFY -- "Yes" --> PWRITE["EVM Write<br/>0x03 → ParlayEngine"]
+        PVERIFY -- "No" --> PREJECT["❌ Abort"]
+    end
+
     style HTTP fill:#375BD2,color:#fff
     style LOG fill:#375BD2,color:#fff
     style CRON fill:#375BD2,color:#fff
     style DLOG fill:#375BD2,color:#fff
+    style PLOG fill:#375BD2,color:#fff
     style REJECT fill:#ef4444,color:#fff
+    style PREJECT fill:#ef4444,color:#fff
     style WRITE fill:#22c55e,color:#fff
+    style PWRITE fill:#22c55e,color:#fff
     style CLAIM fill:#22c55e,color:#fff
     style STRICT fill:#f59e0b,color:#fff
 ```
@@ -131,6 +142,7 @@ The React frontend provides a full prediction market experience:
 - **Dispute Panel**: File disputes during 1-hour window, track re-verification status, view resolution outcomes
 - **Price Comparison**: Cross-platform verification (CRE vs CoinGecko vs CoinCap live)
 - **Create Market**: Deploy new prediction markets — both price targets and free-form event questions
+- **Parlays**: Combine 2-5 market predictions into combo bets with multiplied odds, CRE cross-contract settlement
 - **Event Markets**: "Event Market" badge for non-price questions resolved via AI
 
 ### Running the Frontend
@@ -180,7 +192,7 @@ Or use the Makefile:
 ```bash
 make install   # Install all dependencies
 make build     # Build contracts + frontend
-make test      # Run all tests (62 passing)
+make test      # Run all tests (84 passing)
 make dev       # Start frontend dev server
 ```
 
@@ -244,7 +256,9 @@ Eight markets deployed on Sepolia demonstrating all resolution paths:
 | #6 | Event | Will Apple announce Vision Pro 2 before WWDC 2026? | N/A | Gemini AI + Google Search | Open |
 | #7 | Price | Will AVAX exceed $50 by July 2026? | $50 | Dual-source price | Open |
 
-**Contract (Sepolia, verified)**: [`0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5`](https://sepolia.etherscan.io/address/0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5)
+**PredictionMarket (Sepolia, verified)**: [`0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5`](https://sepolia.etherscan.io/address/0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5)
+
+**ParlayEngine (Sepolia)**: [`0x698189C348fE75Cd288F89De021811Ff04b7dC2B`](https://sepolia.etherscan.io/address/0x698189C348fE75Cd288F89De021811Ff04b7dC2B)
 
 ---
 
@@ -285,7 +299,7 @@ Settled markets enter a **1-hour dispute window** before claims are unlocked:
 | **Window** | 1 hour after settlement |
 | **Stake** | 0.001 ETH (returned if overturned, forfeited if confirmed) |
 | **Re-verification** | CRE strict mode — 70% confidence threshold |
-| **Report prefix** | `0x02` (vs `0x01` for settlement, `0x00` for creation) |
+| **Report prefix** | `0x02` (vs `0x00` creation, `0x01` settlement, `0x03` parlay) |
 
 **How it works:**
 1. User calls `disputeMarket(marketId)` with 0.001 ETH within 1 hour of settlement
@@ -297,7 +311,7 @@ Settled markets enter a **1-hour dispute window** before claims are unlocked:
 
 ---
 
-## CRE Capabilities Used (12)
+## CRE Capabilities Used (16)
 
 | # | Capability | Purpose |
 |---|-----------|---------|
@@ -313,12 +327,16 @@ Settled markets enter a **1-hour dispute window** before claims are unlocked:
 | 10 | **Consensus Aggregation** | Multi-node agreement on price data |
 | 11 | **Custom Compute** | Price threshold logic + source divergence check |
 | 12 | **Strict Compute** | Dispute re-verification with 70% confidence threshold |
+| 13 | **Log Trigger (Parlay)** | ParlaySettlementRequested event triggers cross-contract settlement |
+| 14 | **EVM Read (Parlay State)** | Read parlay + legs from ParlayEngine contract |
+| 15 | **EVM Read (Cross-Contract)** | Read each leg's market outcome from PredictionMarket |
+| 16 | **EVM Write (Parlay Report)** | Write 0x03 settlement report to ParlayEngine |
 
 ---
 
 ## Testing
 
-62 tests across 2 test suites covering all contract functions, dispute arbitration, event markets, World ID, and E2E demo flows:
+84 tests across 3 test suites covering all contract functions, dispute arbitration, event markets, World ID, parlay cross-contract settlement, and E2E demo flows:
 
 ```
 $ forge test -vvv
@@ -390,6 +408,38 @@ $ forge test -vvv
 [PASS] test_multipleMarkets_isolation
 [PASS] testFuzz_claim_proportionalPayout (256 runs)
 
+# ── ParlayEngineTest (22 tests) ──────────────────────
+
+# Parlay Creation (8)
+[PASS] test_createParlay_2legs
+[PASS] test_createParlay_5legs
+[PASS] test_createParlay_reverts_tooFewLegs
+[PASS] test_createParlay_reverts_tooManyLegs
+[PASS] test_createParlay_reverts_duplicateMarket
+[PASS] test_createParlay_reverts_settledMarket
+[PASS] test_createParlay_reverts_zeroStake
+[PASS] test_createParlay_reverts_poolTooSmall
+[PASS] test_createParlay_snapshotsMultiplier
+
+# Parlay Settlement (4)
+[PASS] test_requestSettlement_emitsEvent
+[PASS] test_settleParlay_allWin
+[PASS] test_settleParlay_oneLoses
+[PASS] test_settleParlay_voided
+[PASS] test_settleParlay_reverts_notAllSettled
+
+# Parlay Claims (5)
+[PASS] test_claimWinnings_success
+[PASS] test_claimRefund_voided
+[PASS] test_claim_reverts_doubleClaim
+[PASS] test_claim_reverts_ifLost
+[PASS] test_claim_reverts_notCreator
+
+# Getters (3)
+[PASS] test_getNextParlayId
+[PASS] test_getHouseBalance
+[PASS] test_receiveEth
+
 # ── E2EDemoTest (15 tests) ───────────────────────────
 
 [PASS] test_demo1_priceMarket_fullLifecycle
@@ -408,7 +458,7 @@ $ forge test -vvv
 [PASS] test_demo14_contractConstants
 [PASS] test_demo15_fullDemoSequence
 
-Suite result: ok. 62 passed; 0 failed; 0 skipped
+Ran 3 test suites: 84 tests passed, 0 failed, 0 skipped
 ```
 
 ---
@@ -428,7 +478,11 @@ Suite result: ok. 62 passed; 0 failed; 0 skipped
 | `my-workflow/settlementLogic.ts` | **New** — Dual-source price fetch + event AI + threshold + write | DRY principle across triggers; `writeDisputeResolution()` for dispute reports (0x02 prefix) |
 | `my-workflow/coincapPrice.ts` | **New** — CoinCap price fetcher | Second independent price source for consensus |
 | `my-workflow/trendingMarkets.ts` | **New** — AI-powered auto-market creation | Gemini suggests trending markets, CRE creates them on-chain autonomously |
-| `my-workflow/main.ts` | Added Cron + Dispute trigger registration | Four trigger types: HTTP, Log:Settlement, Log:Dispute, Cron |
+| `contracts/src/ParlayEngine.sol` | **New** — Cross-contract parlay engine (282 lines) | Combo bets on 2-5 markets, house pool model, CRE 0x03 settlement |
+| `contracts/test/ParlayEngine.t.sol` | **New** — 22 Foundry tests | Parlay creation, settlement, claims, edge cases |
+| `my-workflow/parlayCallback.ts` | **New** — Parlay CRE handler (430 lines) | Cross-contract orchestration: read ParlayEngine + PredictionMarket, write 0x03 report |
+| `my-workflow/main.ts` | Added Cron + Dispute + Parlay trigger registration | Five trigger types: HTTP, Log:Settlement, Log:Dispute, Cron, Log:Parlay |
+| `frontend/src/ParlayPage.tsx` | **New** — Parlay Builder + My Parlays (558 lines) | Market selection grid, parlay slip, settlement + claim actions |
 | `my-workflow/httpCallback.ts` | Updated for asset + targetPrice params | Support new market creation schema |
 | `frontend/src/DisputePanel.tsx` | **New** — Dispute UI component | 4-state panel: window countdown, file dispute, active status, resolution display |
 | `frontend/src/SettlementExplorer.tsx` | Updated for event markets | Shows "AI + Search" path for non-price markets |
@@ -464,6 +518,13 @@ Suite result: ok. 62 passed; 0 failed; 0 skipped
 12. **Resolution**: CRE writes `resolveDispute()` on-chain — either confirms (stake forfeited) or overturns (stake returned, outcome flipped)
 13. **Claims Unlocked**: After dispute window closes (or dispute resolved), winners can call `claim()`
 
+### Parlay Betting (Cross-Contract CRE Orchestration)
+16. **Create Parlay**: User calls `createParlay([marketIds], [predictions])` on ParlayEngine with ETH stake. Odds snapshot locked at creation
+17. **Request Settlement**: Anyone calls `requestParlaySettlement(parlayId)`, emitting `ParlaySettlementRequested`
+18. **CRE Cross-Contract Flow**: Log Trigger fires → CRE reads parlay state from ParlayEngine → reads each leg's outcome from PredictionMarket → verifies all disputes resolved → determines won/voided/lost
+19. **0x03 Settlement Report**: CRE writes settlement result to ParlayEngine via `_processReport(0x03 + data)`
+20. **Claim**: Winners call `claimParlayWinnings()` for multiplied payout; voided parlays get full stake refund
+
 ### Auto-Settlement + Auto-Market Creation
 14. **Cron Trigger — Settle**: Runs every 6 hours to scan and settle any expired markets
 15. **Cron Trigger — Create**: After settling, Gemini AI analyzes trending crypto events via Google Search and autonomously creates new prediction markets on-chain
@@ -474,11 +535,12 @@ Suite result: ok. 62 passed; 0 failed; 0 skipped
 
 ## Tech Stack
 
-- **Smart Contract**: Solidity 0.8.24 (Foundry, IR optimizer) — 468 lines, 62 tests
-- **Sybil Resistance**: World ID on-chain verification (Sepolia WorldIDRouter)
-- **CRE Workflow**: TypeScript (Bun + CRE SDK) — 12 capabilities, 4 triggers, 9 modules
-- **Price Oracles**: CoinGecko + CoinCap (dual-source via Confidential HTTP)
-- **AI**: Google Gemini 2.0 Flash (via Confidential HTTP) — price analysis + event judgment
-- **Frontend**: React + TypeScript + Vite + ethers.js v6 + World ID IDKit — 14 components
-- **Network**: Ethereum Sepolia Testnet
-- **CRE Forwarder**: `0x15fc6ae953e024d975e77382eeec56a9101f9f88`
+| Layer | Technology | Details |
+|-------|-----------|---------|
+| **Smart Contracts** | Solidity 0.8.24 (Foundry) | PredictionMarket (468 lines) + ParlayEngine (282 lines), 84 tests |
+| **Sybil Resistance** | World ID | ZK proof verification via Sepolia WorldIDRouter |
+| **CRE Workflow** | TypeScript (Bun + CRE SDK) | 16 capabilities, 5 triggers, 10 modules |
+| **Price Oracles** | CoinGecko + CoinCap | Dual-source via Confidential HTTP |
+| **AI** | Google Gemini 2.0 Flash | Price analysis + event judgment via Confidential HTTP |
+| **Frontend** | React + TypeScript + Vite + ethers.js v6 | 15 components including ParlayPage |
+| **Network** | Ethereum Sepolia | CRE Forwarder: `0x15fc6ae953e024d975e77382eeec56a9101f9f88` |
