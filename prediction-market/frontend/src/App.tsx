@@ -10,6 +10,7 @@ import { MarketList } from "./MarketList";
 import { PriceComparison } from "./PriceComparison";
 import { CreateMarket } from "./CreateMarket";
 import { About } from "./About";
+import { ParlayPage } from "./ParlayPage";
 import "./App.css";
 
 declare global {
@@ -18,7 +19,7 @@ declare global {
   }
 }
 
-type Page = "markets" | "compare" | "create" | "about";
+type Page = "markets" | "compare" | "create" | "parlays" | "about";
 
 function App() {
   const [account, setAccount] = useState<string | null>(null);
@@ -228,6 +229,8 @@ function App() {
             </button>
           </div>
         );
+      case "parlays":
+        return <ParlayPage provider={provider} account={account} />;
       case "about":
         return <About />;
     }
@@ -263,6 +266,12 @@ function App() {
               onClick={() => setPage("create")}
             >
               Create
+            </button>
+            <button
+              className={`nav-tab ${page === "parlays" ? "active" : ""}`}
+              onClick={() => setPage("parlays")}
+            >
+              Parlays
             </button>
             <button
               className={`nav-tab ${page === "about" ? "active" : ""}`}

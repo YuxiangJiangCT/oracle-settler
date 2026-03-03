@@ -74,3 +74,47 @@ export interface Dispute {
   resolved: boolean;
   overturned: boolean;
 }
+
+// ===========================
+// ParlayEngine
+// ===========================
+
+export const PARLAY_ENGINE_ADDRESS = "0x0000000000000000000000000000000000000000"; // Updated after deployment
+
+export const PARLAY_ENGINE_ABI = [
+  // Read
+  "function getParlay(uint256 parlayId) view returns (tuple(address creator, uint48 createdAt, uint256 stake, uint256 potentialPayout, uint8 legCount, bool settled, bool won, bool voided, bool claimed))",
+  "function getParlayLegs(uint256 parlayId) view returns (tuple(uint256 marketId, uint8 prediction, uint256 multiplierBps)[])",
+  "function getNextParlayId() view returns (uint256)",
+  "function getHouseBalance() view returns (uint256)",
+  // Write
+  "function createParlay(uint256[] marketIds, uint8[] predictions) payable returns (uint256)",
+  "function requestParlaySettlement(uint256 parlayId)",
+  "function claimParlayWinnings(uint256 parlayId)",
+  // Constants
+  "function MIN_LEGS() view returns (uint8)",
+  "function MAX_LEGS() view returns (uint8)",
+  "function MAX_PAYOUT() view returns (uint256)",
+  // Events
+  "event ParlayCreated(uint256 indexed parlayId, address indexed creator, uint8 legCount, uint256 stake, uint256 potentialPayout)",
+  "event ParlaySettlementRequested(uint256 indexed parlayId)",
+  "event ParlaySettled(uint256 indexed parlayId, bool won, bool voided, uint256 payout)",
+];
+
+export interface Parlay {
+  creator: string;
+  createdAt: number;
+  stake: bigint;
+  potentialPayout: bigint;
+  legCount: number;
+  settled: boolean;
+  won: boolean;
+  voided: boolean;
+  claimed: boolean;
+}
+
+export interface ParlayLeg {
+  marketId: bigint;
+  prediction: number; // 0 = Yes, 1 = No
+  multiplierBps: bigint;
+}
