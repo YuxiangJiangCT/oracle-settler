@@ -1,94 +1,96 @@
-# OracleSettler Demo Video Script (~4.5 min)
+# OracleSettler Demo Video Script — FINAL (~4.5 min)
 
-## HOOK (0:00 - 0:25)
+## HOOK (0:00 - 0:20)
 
 **Screen**: Markets page with StatsBar visible (8 markets, volume, settled count)
 
 **Script**:
 > "Polymarket does $500 million in daily volume — but every single market is settled by a handful of people behind closed doors. If they get it wrong, you have zero recourse."
 >
-> "OracleSettler fixes this. Fully autonomous settlement using Chainlink CRE — dual-source price verification, AI judgment for borderline cases, and a dispute protocol that can overturn wrong outcomes. No humans in the loop."
+> "OracleSettler fixes this. Fully autonomous settlement using Chainlink CRE — no humans in the loop."
 
 ---
 
-## PLATFORM OVERVIEW (0:25 - 0:55)
+## PLATFORM OVERVIEW (0:20 - 0:50)
 
 **Screen**: Scroll through Markets page showing 8 markets + StatsBar
 
 **Script**:
-> "We have 8 live markets on Sepolia — 6 price markets covering BTC, ETH, SOL, DOGE, LINK, and AVAX, plus 2 event markets: GPT-5 release and Apple Vision Pro sales."
+> "8 live markets on Sepolia — 6 price markets covering BTC, ETH, SOL, DOGE, LINK, AVAX, plus 2 event markets: GPT-5 release and Apple Vision Pro."
 >
 > *(Point to StatsBar)*
 >
-> "The stats bar shows real on-chain data — total markets, active, settled, and trading volume. Everything reads directly from the contract."
+> "Stats bar pulls real on-chain data. And settlement is permissionless by design — anyone can trigger it, but only CRE determines the outcome. The caller can't influence the result. This eliminates admin-only resolution as a single point of failure."
 >
-> *(Click into About page, quickly show CRE capabilities grid)*
+> *(Quick click to About page, flash CRE capabilities grid)*
 >
-> "Under the hood: 12 CRE capabilities across 4 trigger types. HTTP, Log, Cron, and a second Log Trigger just for disputes."
+> "12 CRE capabilities, 4 trigger types."
 
 ---
 
-## LIVE DEMO — Part 1: Price Market Settlement (0:55 - 1:45)
+## AI MARKET CREATION (0:50 - 1:15) ⭐
 
-### Show Settled Market (0:55 - 1:20)
-
-**Screen**: Click on a settled BTC market
+**Screen**: Navigate to Create Market page
 
 **Script**:
-> "This BTC market has been settled by CRE. Let me show you exactly how."
+> "You don't need to fill out forms. Just type a question."
 >
-> *(Click "Replay Settlement" — watch 7-step animation)*
+> *(Type: "will dogecoin hit a dollar by summer?")*
 >
-> "Step by step: CRE reads the market from chain, fetches prices from CoinGecko AND CoinCap, cross-validates them — if they diverge more than 2%, it rejects for safety. Then it checks if the price is more than 5% from the target — if yes, instant settlement at 100% confidence. If it's borderline, Gemini AI analyzes and scores confidence."
+> "Gemini AI parses it — identifies the asset, extracts the price target, fills everything automatically."
 >
-> *(Point to Settlement Explorer summary)*
+> *(Show fields auto-filling)*
 >
-> "Full transparency. You can see the outcome, confidence score, settled price, settlement method, and which data sources were used. No black box."
-
-### Place Prediction (1:20 - 1:45)
-
-**Screen**: Click into an active market (e.g., LINK or SOL) → Place prediction
-
-**Script**:
-> "Let me place a prediction on this active market. I'll bet YES with 0.01 ETH."
->
-> *(Click YES, enter amount, submit tx)*
->
-> "Done. The odds bar updates in real-time based on the parimutuel pool. When this market is ready, anyone can request settlement — or CRE's cron trigger auto-settles every 6 hours."
+> "Any question, any asset. One click to deploy on-chain."
 
 ---
 
-## LIVE DEMO — Part 2: Event Markets + AI (1:45 - 2:15)
+## SETTLEMENT REPLAY (1:15 - 1:55) ⭐
+
+**Screen**: Markets page → Click settled BTC market → scroll to Settlement Explorer
+
+**Script**:
+> "This BTC market has been settled. Let me replay exactly how CRE did it."
+>
+> *(Click "▶ Replay Settlement" — let animation run, narrate lightly as it plays)*
+>
+> "CRE reads the market... fetches BTC price from CoinGecko AND CoinCap... cross-validates — divergence under 2%, sources agree... price is 2.7% below target, within 5% threshold, so Gemini AI is consulted..."
+>
+> *(AI thinking animation → verdict)*
+>
+> "NO, 75% confidence. Consensus signed. Written to chain. Full transparency — every decision visible and auditable."
+
+---
+
+## EVENT MARKET — THE OTHER PATH (1:55 - 2:25)
 
 **Screen**: Navigate to GPT-5 event market
 
 **Script**:
-> "Here's what sets OracleSettler apart — event markets. 'Will GPT-5 be released before July 2026?' There's no price feed for this."
+> "Now here's the second resolution path — event markets. 'Will GPT-5 be released before July 2026?' There's no price feed for this."
 >
 > *(Point to "Event Market" badge)*
 >
-> "CRE detects this is a non-price market and routes to a completely different path — Gemini AI with Google Search grounding. The AI researches current news, analyzes the evidence, and returns a YES or NO verdict with a confidence score."
+> "CRE detects this is non-price and routes to a completely different pipeline — Gemini AI with Google Search grounding. The AI researches real-world news, analyzes evidence, and returns YES or NO with a confidence score."
 >
-> "Same trustless settlement pipeline, but for any verifiable real-world question — not just crypto prices."
+> "Two resolution paths: dual-source price consensus for price markets, AI + Google Search for event markets. Same trustless CRE pipeline, different data sources."
 
 ---
 
-## LIVE DEMO — Part 3: Dispute Arbitration (2:15 - 3:00)
+## DISPUTE SIMULATION (2:25 - 3:00) ⭐
 
-**Screen**: Navigate to a settled market showing dispute window
+**Screen**: Back to settled BTC market → scroll to Dispute Panel
 
 **Script**:
-> "After settlement, there's a 1-hour dispute window. See the countdown timer."
+> "After settlement, there's a 1-hour dispute window. Let me show you what happens if someone challenges the result."
 >
-> *(Point to DisputePanel with countdown)*
+> *(Click "⚡ Simulate Dispute" — let animation play)*
 >
-> "If you believe the outcome is wrong, you stake 0.001 ETH to file a dispute. This triggers CRE's second Log Trigger — it re-runs the entire verification in strict mode, with a higher 70% confidence threshold."
+> "Dispute filed with 0.001 ETH stake... CRE re-verifies in strict mode... AI re-analyzes with a higher 70% confidence threshold..."
 >
-> *(Click "Simulate Dispute" to show the 4-step flow)*
+> *(Result appears)*
 >
-> "Watch: dispute filed, CRE strict re-verification, AI re-analysis, then resolution. If CRE confirms the original outcome, the stake is forfeited — that's anti-spam. If overturned, the stake is returned and the outcome flips."
->
-> "This is fully trustless. No human arbitrator, no DAO vote, no waiting weeks. CRE handles it in minutes."
+> "Original settlement confirmed. Stake forfeited — that's anti-spam. If the re-check had found a different result, the outcome flips and the stake is refunded. Fully trustless — no human arbitrator, no DAO vote."
 
 ---
 
@@ -97,46 +99,40 @@
 **Screen**: Navigate to Compare page
 
 **Script**:
-> "The Compare page lets you verify CRE's settlement against live market data. CoinGecko price, CoinCap price, CRE's settled price — all side by side with source divergence percentage."
->
-> "This is radical transparency. Any user can independently verify that the settlement was fair."
+> "The Compare page — CoinGecko price, CoinCap price, CRE's settled price, all side by side with source divergence. Any user can independently verify that the settlement was fair."
 
 ---
 
-## WORLD ID + CODE (3:15 - 3:50)
+## WORLD ID + CODE (3:15 - 3:45)
 
-### World ID (3:15 - 3:30)
+### World ID (3:15 - 3:25)
 
-**Screen**: Navigate to Create page, show World ID button
-
-**Script**:
-> "Market creation supports World ID verification — zero-knowledge proof that you're a unique human. This prevents sybil attacks on market creation without sacrificing privacy."
-
-### Quick Code Flash (3:30 - 3:50)
-
-**Screen**: Show contract + workflow in editor (quick cuts)
+**Screen**: Create page, show World ID button
 
 **Script**:
-> "468-line Solidity contract with IR optimizer. The key is `_processReport` — it routes CRE reports by prefix byte. `0x00` creates markets, `0x01` settles, `0x02` resolves disputes."
->
-> *(Quick flash of terminal)*
->
-> "62 Foundry tests — 47 unit tests covering every function, plus 15 end-to-end demo tests. Fuzz testing on payout calculations. All passing."
+> "Market creation supports World ID — zero-knowledge proof of unique humanness. Sybil resistance without sacrificing privacy."
+
+### Quick Code Flash (3:25 - 3:45)
+
+**Screen**: Quick cuts — contract + workflow + terminal
+
+**Script**:
+> "468-line Solidity contract. `_processReport` routes CRE reports by prefix byte — `0x00` creates, `0x01` settles, `0x02` resolves disputes. 62 Foundry tests, all passing."
 
 ---
 
-## CLOSE (3:50 - 4:15)
+## CLOSE (3:45 - 4:10)
 
-**Screen**: Back to Markets page with all 8 markets visible
+**Screen**: Markets page with all 8 markets visible
 
 **Script**:
 > "OracleSettler — trustless prediction markets with three resolution paths: dual-source price consensus, AI event judgment, and dispute arbitration."
 >
-> "12 CRE capabilities. 4 trigger types. 62 tests. 8 live markets. Zero backend servers."
+> "12 CRE capabilities. 4 triggers. 62 tests. 8 live markets. Zero backend servers."
 >
-> "The entire backend is a CRE workflow. No Express, no PostgreSQL, no cron jobs. Just Chainlink."
+> "No Express. No PostgreSQL. No cron jobs. The entire backend is a CRE workflow running on Chainlink's decentralized oracle network."
 >
-> "Check out the code on GitHub and try it live at oracle-settler.vercel.app. Thanks for watching."
+> "Try it live at oracle-settler.vercel.app. Code on GitHub. Thanks for watching."
 
 **Screen**: GitHub URL + Vercel URL + logo fade
 
@@ -144,20 +140,17 @@
 
 ## Recording Tips
 
-- **Resolution**: 1920x1080, dark theme (already set)
-- **Browser**: Chrome, disable cache via DevTools for fresh loads
-- **Wallet**: MetaMask on Sepolia with test ETH ready
-- **Markets**: 8 markets already seeded on V5 contract (`0x51CC15B53d776b2B7a76Fa30425e8f9aD2aec1a5`)
-  - 6 price markets (BTC, ETH, SOL, DOGE, LINK, AVAX)
-  - 2 event markets (GPT-5, Apple Vision Pro)
-  - Mix of active + settled states
-- **Pacing**: Pause 1-2 seconds on each Settlement Explorer step (interval is 1200ms)
+- **Resolution**: 1920x1080, dark theme
+- **Browser**: Chrome, disable cache via DevTools
+- **Wallet**: MetaMask on Sepolia with test ETH
+- **Pacing**: Settlement Replay and Dispute Sim animations are 1200ms/step — let them breathe, narrate alongside
+- **NL Creation**: pre-test that Gemini API key works in frontend before recording
 - **Recording tool**: QuickTime / Loom / OBS
-- **Audio**: Clear voiceover, no background music during demo sections
-- **Upload**: YouTube unlisted → add link to README + hackathon submission
-- **Target**: ~4.5 minutes (concise but comprehensive — judges see hundreds of videos)
-- **Key moments to emphasize**:
-  1. Settlement Explorer 7-step replay (the "wow" moment)
-  2. Event market AI path (differentiation)
-  3. Dispute simulation (unique feature)
-  4. "62 tests, zero backend" (closing punch)
+- **Audio**: Clear voiceover, minimal background noise. Optional subtle lo-fi during intro/outro only.
+- **Upload**: YouTube unlisted → update README + hackathon submission
+- **Target**: ~4-4.5 minutes
+- **The 4 moments judges will remember**:
+  1. "will dogecoin hit a dollar" → AI auto-fills (0:50)
+  2. Settlement Replay animation (1:15)
+  3. Dispute simulation (2:25)
+  4. "Zero backend" closing punch (3:45)
