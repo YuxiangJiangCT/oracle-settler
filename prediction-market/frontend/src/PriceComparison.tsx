@@ -34,7 +34,7 @@ export function PriceComparison({ markets }: PriceComparisonProps) {
       <h2 className="comparison-title">Settlement Verification</h2>
       <p className="comparison-subtitle">
         Verify CRE oracle settlements independently. Price markets are cross-checked against
-        live CoinGecko and CoinCap data. Event markets show the AI verdict and confidence score.
+        live CoinGecko and CryptoCompare data. Event markets show the AI verdict and confidence score.
       </p>
 
       {/* Price Markets Section */}
@@ -91,13 +91,13 @@ export function PriceComparison({ markets }: PriceComparisonProps) {
                       </span>
                     </div>
                     <div className="comp-row">
-                      <span className="comp-label">CoinCap Live</span>
+                      <span className="comp-label">CryptoCompare Live</span>
                       <span className="comp-value">
                         {priceData?.loading
                           ? "Loading..."
                           : capPrice !== null
                           ? formatUsd(capPrice)
-                          : <span title="CoinCap API unavailable">N/A</span>}
+                          : <span title="CryptoCompare API unavailable">N/A</span>}
                       </span>
                     </div>
                     <div className="comp-row">
@@ -105,7 +105,7 @@ export function PriceComparison({ markets }: PriceComparisonProps) {
                       <span className={`comp-value ${sourceDivergence !== null && sourceDivergence < 2 ? "highlight-green" : sourceDivergence !== null ? "highlight-yellow" : ""}`}>
                         {sourceDivergence !== null
                           ? `${sourceDivergence.toFixed(2)}% ${sourceDivergence < 2 ? "(within 2% threshold)" : "(above 2% threshold)"}`
-                          : <span title="Requires both CoinGecko and CoinCap data">N/A</span>}
+                          : <span title="Requires both CoinGecko and CryptoCompare data">N/A</span>}
                       </span>
                     </div>
                     <div className="comp-row">

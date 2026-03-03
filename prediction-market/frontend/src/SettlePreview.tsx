@@ -251,7 +251,7 @@ export function SettlePreview({ market }: SettlePreviewProps) {
           </span>
         </div>
         <div className="price-source">
-          <span className="source-label">CoinCap</span>
+          <span className="source-label">CryptoCompare</span>
           <span className="source-price">
             {priceData?.loading ? "Loading..." : capPrice !== null ? formatUsd(capPrice) : "N/A"}
           </span>

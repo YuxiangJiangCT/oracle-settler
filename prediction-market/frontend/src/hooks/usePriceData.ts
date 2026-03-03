@@ -17,16 +17,17 @@ const COINGECKO_IDS: Record<string, string> = {
   sol: "solana",
 };
 
-const COINCAP_IDS: Record<string, string> = {
-  bitcoin: "bitcoin",
-  ethereum: "ethereum",
-  solana: "solana",
-  dogecoin: "dogecoin",
-  chainlink: "chainlink",
-  "avalanche-2": "avalanche",
-  btc: "bitcoin",
-  eth: "ethereum",
-  sol: "solana",
+// CryptoCompare uses ticker symbols (replaces CoinCap which is down)
+const CRYPTOCOMPARE_SYMBOLS: Record<string, string> = {
+  bitcoin: "BTC",
+  ethereum: "ETH",
+  solana: "SOL",
+  dogecoin: "DOGE",
+  chainlink: "LINK",
+  "avalanche-2": "AVAX",
+  btc: "BTC",
+  eth: "ETH",
+  sol: "SOL",
 };
 
 export function usePriceData(assets: string[]): PriceData[] {
@@ -49,12 +50,12 @@ export function usePriceData(assets: string[]): PriceData[] {
           .catch(() => null),
         Promise.all(
           assets.map(async (asset) => {
-            const id = COINCAP_IDS[asset.toLowerCase()] || asset.toLowerCase();
+            const symbol = CRYPTOCOMPARE_SYMBOLS[asset.toLowerCase()] || asset.toUpperCase();
             try {
-              const resp = await fetch(`https://api.coincap.io/v2/assets/${id}`);
+              const resp = await fetch(`https://min-api.cryptocompare.com/data/price?fsym=${symbol}&tsyms=USD`);
               if (!resp.ok) return { asset, price: null };
               const data = await resp.json();
-              return { asset, price: parseFloat(data.data?.priceUsd) || null };
+              return { asset, price: data.USD ?? null };
             } catch {
               return { asset, price: null };
             }
