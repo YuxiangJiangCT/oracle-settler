@@ -1,4 +1,4 @@
-# OracleSettler Demo Video Script — FINAL (~4.5 min, 16 CRE capabilities)
+# OracleSettler Demo Video Script — FINAL (~5 min, 16 CRE capabilities)
 
 ## HOOK (0:00 - 0:20)
 
@@ -77,7 +77,28 @@
 
 ---
 
-## DISPUTE SIMULATION (2:25 - 3:00) ⭐
+## SETTLE PREVIEW + AI ADVISOR (2:25 - 3:00) ⭐
+
+**Screen**: Navigate to an active price market (e.g., BTC or ETH) → scroll to Settle Preview panel
+
+**Script**:
+> "Before settlement even happens, users can see a live preview. Settle Preview fetches real-time prices from CoinGecko and CryptoCompare, runs the same dual-source consensus check, and shows what the outcome WOULD be if settled right now."
+>
+> *(Point to the live prices, consensus bar, and predicted verdict)*
+>
+> "Both sources agree, divergence under 2% — predicted outcome: YES."
+>
+> *(Scroll down to AI Market Advisor panel → click "Ask AI Advisor")*
+>
+> "And here's the AI Advisor — Gemini analyzes the market data and compares with current odds. It estimates the true probability, identifies any mispricing, and gives a recommendation: BET YES, BET NO, or HOLD."
+>
+> *(AI result appears — show edge comparison bars and recommendation)*
+>
+> "Market says 60% YES, AI estimates 85% — that's a +25% edge. The advisor says BET YES. This is AI working proactively, not just at settlement."
+
+---
+
+## DISPUTE SIMULATION (3:00 - 3:35) ⭐
 
 **Screen**: Back to settled BTC market → scroll to Dispute Panel
 
@@ -94,7 +115,7 @@
 
 ---
 
-## PARLAY — CROSS-CONTRACT ORCHESTRATION (3:00 - 3:30) ⭐
+## PARLAY — CROSS-CONTRACT ORCHESTRATION (3:35 - 4:05) ⭐
 
 **Screen**: Navigate to Parlays tab
 
@@ -111,7 +132,7 @@
 
 ---
 
-## SETTLEMENT VERIFICATION (3:30 - 3:45)
+## SETTLEMENT VERIFICATION (4:05 - 4:20)
 
 **Screen**: Navigate to Verification page
 
@@ -120,16 +141,16 @@
 
 ---
 
-## WORLD ID + CODE (3:45 - 4:15)
+## WORLD ID + CODE (4:20 - 4:50)
 
-### World ID (3:45 - 3:55)
+### World ID (4:20 - 4:30)
 
 **Screen**: Create page, show World ID button
 
 **Script**:
 > "Market creation supports World ID — zero-knowledge proof of unique humanness. Sybil resistance without sacrificing privacy."
 
-### Quick Code Flash (3:55 - 4:15)
+### Quick Code Flash (4:30 - 4:50)
 
 **Screen**: Quick cuts — contract + workflow + terminal
 
@@ -138,7 +159,7 @@
 
 ---
 
-## CLOSE (4:15 - 4:30)
+## CLOSE (4:50 - 5:05)
 
 **Screen**: Markets page with all 8 markets visible
 
@@ -165,13 +186,14 @@
 - **Recording tool**: QuickTime / Loom / OBS
 - **Audio**: Clear voiceover, minimal background noise. Optional subtle lo-fi during intro/outro only.
 - **Upload**: YouTube unlisted → update README + hackathon submission
-- **Target**: ~4.5 minutes
-- **The 5 moments judges will remember**:
+- **Target**: ~5 minutes
+- **The 6 moments judges will remember**:
   1. "will dogecoin hit a dollar" → AI auto-fills (0:50)
   2. Settlement Replay animation (1:15)
-  3. Dispute simulation (2:25)
-  4. Parlay cross-contract orchestration (3:00)
-  5. "Zero backend" closing punch (4:15)
+  3. Settle Preview + AI Advisor edge detection (2:25)
+  4. Dispute simulation (3:00)
+  5. Parlay cross-contract orchestration (3:35)
+  6. "Zero backend" closing punch (4:50)
 
 ---
 
