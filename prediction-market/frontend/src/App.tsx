@@ -27,6 +27,7 @@ function App() {
   const [chainId, setChainId] = useState<number | null>(null);
   const [wrongNetwork, setWrongNetwork] = useState(false);
   const [page, setPage] = useState<Page>("markets");
+  const [navKey, setNavKey] = useState(0);
 
   // Shared market data for PriceComparison
   const [markets, setMarkets] = useState<{ id: number; data: Market }[]>([]);
@@ -193,7 +194,7 @@ function App() {
       case "markets":
         return (
           <>
-            <MarketList provider={provider} account={account} />
+            <MarketList key={navKey} provider={provider} account={account} />
             {!account && (
               <div className="hero-panel" style={{ marginTop: 32 }}>
                 <h3>Connect to Interact</h3>
@@ -242,7 +243,7 @@ function App() {
       <nav className="nav-bar">
         <div className="nav-left">
           <div className="nav-logo">
-            <span className="logo-text" onClick={() => setPage("markets")} style={{ cursor: "pointer" }}>
+            <span className="logo-text" onClick={() => { setPage("markets"); setNavKey(k => k + 1); }} style={{ cursor: "pointer" }}>
               OracleSettler
             </span>
             <span className="chain-badge" title="Ethereum Sepolia Testnet">SEPOLIA</span>
@@ -251,7 +252,7 @@ function App() {
           <div className="nav-tabs">
             <button
               className={`nav-tab ${page === "markets" ? "active" : ""}`}
-              onClick={() => setPage("markets")}
+              onClick={() => { setPage("markets"); setNavKey(k => k + 1); }}
             >
               Markets
             </button>
