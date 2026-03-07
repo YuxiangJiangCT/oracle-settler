@@ -24,19 +24,24 @@ export async function parseMarketQuestion(input: string): Promise<ParsedMarket> 
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) throw new Error("AI unavailable — API key not configured");
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: `${PARSE_PROMPT}\n\nUser input: ${input}` }] }],
+  });
+
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `${PARSE_PROMPT}\n\nUser input: ${input}` }] }],
-      }),
-    }
-  );
+      body,
+    });
+    if (res.status !== 429) break;
+    await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
+  }
 
-  if (!res.ok) {
-    throw new Error("AI service unavailable. Please fill the form manually.");
+  if (!res || !res.ok) {
+    throw new Error(res?.status === 429 ? "Rate limited — wait a moment and retry" : "AI service unavailable. Please fill the form manually.");
   }
 
   const data = await res.json();

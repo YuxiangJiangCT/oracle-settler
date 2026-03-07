@@ -45,18 +45,21 @@ Research this question using your knowledge of current events and news. Determin
 
 Respond with ONLY valid JSON: {"outcome":"YES" or "NO","confidence":0-100,"reasoning":"1-2 sentence explanation citing specific evidence or news"}`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] });
+
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-      }),
-    }
-  );
+      body,
+    });
+    if (res.status !== 429) break;
+    await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
+  }
 
-  if (!res.ok) throw new Error("Gemini API unavailable");
+  if (!res || !res.ok) throw new Error(res?.status === 429 ? "Rate limited — please wait a moment and retry" : "Gemini API unavailable");
 
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
