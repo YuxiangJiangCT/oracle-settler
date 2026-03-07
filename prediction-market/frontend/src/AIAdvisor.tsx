@@ -73,7 +73,7 @@ Research this event using your knowledge of current events and news. Estimate th
 
 Respond with ONLY valid JSON: {"probability": <0-100>, "reasoning": "<2-3 sentence analysis citing specific evidence>", "riskLevel": "Low" or "Medium" or "High"}`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] });
 
   let res: Response | null = null;
@@ -262,7 +262,7 @@ export function AIAdvisor({ market }: AIAdvisorProps) {
           <p className="advisor-reasoning">{result.reasoning}</p>
 
           {/* Source Tag */}
-          <div className="advisor-source-tag">Gemini 2.0 Flash — market intelligence analysis</div>
+          <div className="advisor-source-tag">Gemini 2.5 Flash — market intelligence analysis</div>
 
           {/* Re-analyze */}
           <button className="advisor-retry-btn" onClick={handleAnalyze}>Re-analyze</button>

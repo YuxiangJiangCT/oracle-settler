@@ -24,7 +24,7 @@ export async function parseMarketQuestion(input: string): Promise<ParsedMarket> 
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) throw new Error("AI unavailable — API key not configured");
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   const body = JSON.stringify({
     contents: [{ parts: [{ text: `${PARSE_PROMPT}\n\nUser input: ${input}` }] }],
   });

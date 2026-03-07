@@ -45,7 +45,7 @@ Research this question using your knowledge of current events and news. Determin
 
 Respond with ONLY valid JSON: {"outcome":"YES" or "NO","confidence":0-100,"reasoning":"1-2 sentence explanation citing specific evidence or news"}`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] });
 
   let res: Response | null = null;
