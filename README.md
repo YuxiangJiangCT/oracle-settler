@@ -4,7 +4,7 @@ Automated prediction market settlement using **dual-source price verification (C
 
 **Live Frontend**: [oracle-settler.vercel.app](https://oracle-settler.vercel.app)
 
-**Demo Video**: [YouTube](https://youtube.com) *(link to be added after recording)*
+**Demo Video**: [Google Drive](https://drive.google.com/file/d/1UV0V2dvN7VtaQxawSQoPJ7bNoLsBMhOD/view?usp=sharing)
 
 ---
 
