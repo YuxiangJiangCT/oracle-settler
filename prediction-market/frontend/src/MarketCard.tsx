@@ -36,6 +36,7 @@ export function MarketCard({ market, marketId, onClick }: MarketCardProps) {
   const outcomeLabel = market.outcome === 0 ? "YES" : "NO";
   const outcomeClass = market.outcome === 0 ? "yes-wins" : "no-wins";
   const confidence = market.confidence / 100; // stored as basis points (e.g. 10000 = 100%)
+  const isExpired = !market.settled && market.deadline > 0 && Date.now() / 1000 > market.deadline;
 
   return (
     <div className="market-card" onClick={onClick} style={onClick ? { cursor: "pointer" } : undefined}>
@@ -46,8 +47,8 @@ export function MarketCard({ market, marketId, onClick }: MarketCardProps) {
           {market.settled && market.confidence > 0 && (Date.now() / 1000 - market.settledAt) < 3600 && (
             <span className="market-status disputed">Dispute Window</span>
           )}
-          <span className={`market-status ${market.settled ? "settled" : "active"}`}>
-            {market.settled ? "Settled" : "Active"}
+          <span className={`market-status ${market.settled ? "settled" : isExpired ? "expired" : "active"}`}>
+            {market.settled ? "Settled" : isExpired ? "Expired" : "Active"}
           </span>
         </div>
       </div>
@@ -91,7 +92,7 @@ export function MarketCard({ market, marketId, onClick }: MarketCardProps) {
             ? `Settled ${timeAgo(market.settledAt)}`
             : `Created ${timeAgo(market.createdAt)}`}
         </span>
-        {!market.settled && (() => {
+        {!market.settled && !isExpired && (() => {
           const dl = deadlineInfo(market.deadline);
           return dl ? (
             <span className={`deadline-badge deadline-${dl.urgency}`}>{dl.text}</span>

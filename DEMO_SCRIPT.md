@@ -38,13 +38,13 @@
 
 「Creating a market is effortless. You don't need to fill out any forms. Just type a question in plain English.」
 
-[Click the AI input field, type: "will dogecoin hit a dollar by summer?"]
+[Click the AI input field, type: "bitcoin 150k by end of year"]
 
-「I'll type: will dogecoin hit a dollar by summer.」
+「I'll type: bitcoin 150k by end of year.」
 
 [Wait for Gemini to parse — fields auto-fill]
 
-「Gemini AI parses the input — it identifies that the asset is Dogecoin, extracts the price target of one dollar, and generates a clean prediction question. All the fields fill in automatically.」
+「Gemini AI parses the input — it identifies that the asset is Bitcoin, extracts the price target of 150 thousand dollars, and generates a clean prediction question. All the fields fill in automatically.」
 
 [Gesture at the filled form]
 
@@ -215,7 +215,7 @@
 - **Target length**: ~5 minutes
 
 ### The 6 moments judges will remember
-1. "will dogecoin hit a dollar" → AI auto-fills the form (0:50)
+1. "bitcoin 150k by end of year" → AI auto-fills the form (0:50)
 2. Settlement Replay step-by-step animation (1:15)
 3. AI Advisor edge detection: "mispricing detected" (2:25)
 4. Dispute simulation with anti-spam stake (3:00)

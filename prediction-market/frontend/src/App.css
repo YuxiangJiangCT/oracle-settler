@@ -441,6 +441,11 @@ body::after {
   color: #22d3ee;
 }
 
+.market-status.expired {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
 .market-status.pending {
   background: rgba(251, 191, 36, 0.15);
   color: #fbbf24;
