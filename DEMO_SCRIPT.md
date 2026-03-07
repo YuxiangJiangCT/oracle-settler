@@ -114,7 +114,7 @@
 
 [快切到编辑器：Solidity 合约代码]
 
-「Two Solidity contracts — PredictionMarket and ParlayEngine. The processReport function routes CRE reports by prefix byte: 0x00 creates, 0x01 settles, 0x02 resolves disputes, 0x03 settles parlays.」
+「Two Solidity contracts — PredictionMarket and ParlayEngine. One function — processReport — routes all CRE reports by a single prefix byte. Four actions: create, settle, dispute, and parlay settlement. All through the same entry point.」
 
 [快切到终端：测试结果]
 
