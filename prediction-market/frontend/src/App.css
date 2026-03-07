@@ -222,24 +222,15 @@ body::after {
 .hero-panel::before {
   content: '';
   position: absolute;
-  inset: -1px;
+  inset: 0;
   border-radius: inherit;
-  background: conic-gradient(from 0deg, var(--accent-primary), var(--accent-secondary), var(--accent-tertiary), var(--accent-primary));
-  z-index: -2;
-  animation: borderRotate 4s linear infinite;
-}
-
-.hero-panel::after {
-  content: '';
-  position: absolute;
-  inset: 1px;
-  border-radius: inherit;
-  background: var(--surface-0);
+  padding: 1px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary), var(--accent-tertiary));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
   z-index: -1;
-}
-
-@keyframes borderRotate {
-  to { transform: rotate(360deg); }
+  pointer-events: none;
 }
 
 .hero-panel h2 {
