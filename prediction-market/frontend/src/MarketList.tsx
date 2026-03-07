@@ -125,7 +125,15 @@ export function MarketList({ provider, account }: MarketListProps) {
       )}
       <StatsBar markets={markets} />
       <div className="market-grid">
-        {markets.map((m) => (
+        {[...markets].sort((a, b) => {
+          const now = Date.now() / 1000;
+          const aExpired = !a.data.settled && a.data.deadline > 0 && now > a.data.deadline;
+          const bExpired = !b.data.settled && b.data.deadline > 0 && now > b.data.deadline;
+          // Active first, then settled, then expired
+          const aOrder = a.data.settled ? 1 : aExpired ? 2 : 0;
+          const bOrder = b.data.settled ? 1 : bExpired ? 2 : 0;
+          return aOrder - bOrder;
+        }).map((m) => (
           <MarketCard
             key={m.id}
             market={m.data}

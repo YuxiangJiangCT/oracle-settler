@@ -10,7 +10,11 @@ export function StatsBar({ markets }: StatsBarProps) {
 
   const totalMarkets = markets.length;
   const settledMarkets = markets.filter((m) => m.data.settled).length;
-  const activeMarkets = totalMarkets - settledMarkets;
+  const now = Date.now() / 1000;
+  const expiredMarkets = markets.filter(
+    (m) => !m.data.settled && m.data.deadline > 0 && now > m.data.deadline
+  ).length;
+  const activeMarkets = totalMarkets - settledMarkets - expiredMarkets;
 
   let totalVolume = 0n;
   for (const m of markets) {
@@ -39,6 +43,15 @@ export function StatsBar({ markets }: StatsBarProps) {
         <span className="stat-value">{settledMarkets}</span>
         <span className="stat-label">Settled</span>
       </div>
+      {expiredMarkets > 0 && (
+        <>
+          <div className="stat-divider" />
+          <div className="stat-item">
+            <span className="stat-value expired-stat">{expiredMarkets}</span>
+            <span className="stat-label">Expired</span>
+          </div>
+        </>
+      )}
       <div className="stat-divider" />
       <div className="stat-item">
         <span className="stat-value">{volumeDisplay}</span>
