@@ -46,9 +46,9 @@ export function RequestSettlement({ provider, marketId, market, onUpdate }: Requ
     <div className="settlement-section">
       <h3 className="section-title">Request Settlement</h3>
       <p className="settlement-info">
-        Trigger the Chainlink CRE workflow to settle this market. The oracle will
-        fetch the current price from CoinGecko, compare against the target, and
-        use Gemini AI for borderline cases.
+        {market.targetPrice > 0n
+          ? "Trigger the Chainlink CRE workflow to settle this market. The oracle will fetch prices from CoinGecko and CryptoCompare, cross-validate, and use Gemini AI for borderline cases."
+          : "Trigger the Chainlink CRE workflow to settle this market. The oracle will use Gemini AI with Google Search grounding to research the event and determine the outcome."}
       </p>
 
       <div className="cre-flow-preview">
@@ -62,11 +62,11 @@ export function RequestSettlement({ provider, marketId, market, onUpdate }: Requ
         </div>
         <div className="flow-step">
           <span className="step-num">3</span>
-          <span>Confidential HTTP to CoinGecko</span>
+          <span>{market.targetPrice > 0n ? "Confidential HTTP to CoinGecko + CryptoCompare" : "Gemini AI + Google Search grounding"}</span>
         </div>
         <div className="flow-step">
           <span className="step-num">4</span>
-          <span>Price comparison + AI fallback</span>
+          <span>{market.targetPrice > 0n ? "Dual-source consensus + AI fallback" : "AI confidence scoring + evidence analysis"}</span>
         </div>
         <div className="flow-step">
           <span className="step-num">5</span>
