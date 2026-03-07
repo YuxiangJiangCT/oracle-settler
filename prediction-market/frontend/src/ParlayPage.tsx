@@ -248,7 +248,9 @@ export function ParlayPage({ provider, account }: ParlayPageProps) {
     }
   };
 
-  const activeMarkets = markets.filter((m) => !m.data.settled);
+  const activeMarkets = markets.filter(
+    (m) => !m.data.settled && !(m.data.deadline > 0 && Date.now() / 1000 > m.data.deadline)
+  );
 
   const getParlayStatus = (
     p: Parlay
