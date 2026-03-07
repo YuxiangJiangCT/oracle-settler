@@ -533,6 +533,31 @@ Ran 3 test suites: 84 tests passed, 0 failed, 0 skipped
 
 ---
 
+## Files Using Chainlink CRE
+
+### CRE Workflow (`prediction-market/my-workflow/`)
+| File | Role |
+|------|------|
+| `main.ts` | Workflow entry — registers all 5 triggers and routes to handlers |
+| `httpCallback.ts` | HTTP Trigger — market creation via webhook |
+| `logCallback.ts` | Log Trigger — on-demand settlement (SettlementRequested event) |
+| `disputeCallback.ts` | Log Trigger — dispute re-verification in strict mode (DisputeFiled event) |
+| `cronCallback.ts` | Cron Trigger — auto-settle expired markets + auto-create trending markets every 6h |
+| `parlayCallback.ts` | Log Trigger — cross-contract parlay settlement (ParlaySettlementRequested event) |
+| `settlementLogic.ts` | Core logic — dual-source price fetch, consensus check, AI judgment, EVM write |
+| `gemini.ts` | Confidential HTTP — Gemini AI for borderline + event market resolution |
+| `coincapPrice.ts` | Confidential HTTP — CryptoCompare secondary price source |
+| `trendingMarkets.ts` | Confidential HTTP — Gemini AI + Google Search for auto-market creation |
+
+### Smart Contracts (`prediction-market/contracts/src/`)
+| File | Role |
+|------|------|
+| `PredictionMarket.sol` | Inherits `ReceiverTemplate`, processes CRE reports via `_processReport()` (0x00 create, 0x01 settle, 0x02 dispute) |
+| `ParlayEngine.sol` | Inherits `ReceiverTemplate`, processes CRE parlay reports (0x03 settle parlay) |
+| `interfaces/ReceiverTemplate.sol` | Chainlink CRE report receiver — `onReport()` signature verification via KeystoneForwarder |
+
+---
+
 ## Tech Stack
 
 | Layer | Technology | Details |
