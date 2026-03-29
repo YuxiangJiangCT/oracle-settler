@@ -1,3 +1,11 @@
+![Solidity](https://img.shields.io/badge/Solidity-0.8.25-363636?logo=solidity)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript&logoColor=white)
+![Chainlink CRE](https://img.shields.io/badge/Chainlink-CRE-375BD2?logo=chainlink&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-84%20passing-brightgreen)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
+> **[Live Demo \u2192](https://oracle-settler.vercel.app)**
+
 # OracleSettler: Real-Data + AI Prediction Market Resolution on CRE
 
 Automated prediction market settlement using **dual-source price verification (CoinGecko + CryptoCompare)**, **AI judgment from Gemini**, **event market resolution**, **dispute arbitration**, **cross-contract parlay settlement**, and **Chainlink Runtime Environment (CRE)** for trustless, on-chain execution.
